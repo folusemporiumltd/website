@@ -1,11 +1,11 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useCart } from '@/components/cart-provider'
 
-export default function PaymentCallbackPage() {
+function PaymentCallbackContent() {
   const params = useSearchParams()
   const { clearCart } = useCart()
   const [status, setStatus] = useState<'checking' | 'success' | 'failed'>('checking')
@@ -44,5 +44,23 @@ export default function PaymentCallbackPage() {
         </div>
       </section>
     </main>
+  )
+}
+
+export default function PaymentCallbackPage() {
+  return (
+    <Suspense fallback={
+      <main>
+        <section className="section">
+          <div className="container empty">
+            <div className="eyebrow">Folus Emporium</div>
+            <h1>Confirming payment</h1>
+            <p>Please wait while we securely verify your transaction.</p>
+          </div>
+        </section>
+      </main>
+    }>
+      <PaymentCallbackContent />
+    </Suspense>
   )
 }
