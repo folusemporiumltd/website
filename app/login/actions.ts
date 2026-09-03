@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/server'
 
 export async function login(formData: FormData) {
   const supabase = await createClient()
-  const email = String(formData.get('email') ?? '')
+  const email = String(formData.get('email') ?? '').trim()
   const password = String(formData.get('password') ?? '')
   const next = String(formData.get('next') ?? '/account')
 
@@ -19,10 +19,21 @@ export async function login(formData: FormData) {
 
 export async function signup(formData: FormData) {
   const supabase = await createClient()
-  const email = String(formData.get('email') ?? '')
+  const email = String(formData.get('email') ?? '').trim()
   const password = String(formData.get('password') ?? '')
+  const fullName = String(formData.get('name') ?? '').trim()
+  const phone = String(formData.get('phone') ?? '').trim()
 
-  const { error } = await supabase.auth.signUp({ email, password })
+  const { error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      data: {
+        full_name: fullName,
+        phone,
+      },
+    },
+  })
   if (error) redirect(`/login?error=${encodeURIComponent(error.message)}`)
 
   redirect('/login?message=Check%20your%20email%20to%20confirm%20your%20account')
