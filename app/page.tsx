@@ -24,7 +24,7 @@ export default async function Home() {
     <main>
       <div className="topbar"><div className="container"><span>Better Ingredients. Better Processing. Better Experience.</span><span>Serving homes & businesses across Nigeria</span></div></div>
       <header className="nav"><div className="container nav-inner">
-        <Link className="brand" href="/"><div><img src="/brand/folus-emporium-logo.jpg" alt="Folus Emporium logo" /></div><span>FOLUS<br/>EMPORIUM<small>Nature’s Goodness, Purely Yours.</small></span></Link>
+        <Link className="brand" href="/"><div><img src="/folus-emporium-circular-logo.png" alt="Folus Emporium circular logo" /></div><span>FOLUS<br/>EMPORIUM<small>Nature’s Goodness, Purely Yours.</small></span></Link>
         <nav className="navlinks"><Link href="/">Home</Link><Link href="/shop">Shop</Link><Link href="/account">My Account</Link><Link className="btn btn-primary" href="/shop">Shop Now</Link></nav>
       </div></header>
 
