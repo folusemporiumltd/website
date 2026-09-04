@@ -29,7 +29,16 @@ export async function updateSession(request: NextRequest) {
   const { data } = await supabase.auth.getClaims()
   const user = data?.claims
   const pathname = request.nextUrl.pathname
-  const publicRoute = pathname === '/' || pathname.startsWith('/login') || pathname.startsWith('/auth')
+  const publicRoute =
+    pathname === '/' ||
+    pathname.startsWith('/login') ||
+    pathname.startsWith('/auth') ||
+    pathname === '/shop' ||
+    pathname.startsWith('/shop/') ||
+    pathname === '/cart' ||
+    pathname === '/checkout' ||
+    pathname.startsWith('/payment/callback') ||
+    pathname === '/api/paystack/webhook'
 
   if (!user && !publicRoute) {
     const url = request.nextUrl.clone()
