@@ -4,17 +4,21 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 
+function safeNext(value: string) {
+  return value.startsWith('/') && !value.startsWith('//') ? value : '/account'
+}
+
 export async function login(formData: FormData) {
   const supabase = await createClient()
   const email = String(formData.get('email') ?? '').trim()
   const password = String(formData.get('password') ?? '')
-  const next = String(formData.get('next') ?? '/account')
+  const next = safeNext(String(formData.get('next') ?? '/account'))
 
   const { error } = await supabase.auth.signInWithPassword({ email, password })
-  if (error) redirect(`/login?error=${encodeURIComponent(error.message)}`)
+  if (error) redirect(`/login?error=${encodeURIComponent(error.message)}&next=${encodeURIComponent(next)}`)
 
   revalidatePath('/', 'layout')
-  redirect(next.startsWith('/') ? next : '/account')
+  redirect(next)
 }
 
 export async function signup(formData: FormData) {
@@ -23,8 +27,9 @@ export async function signup(formData: FormData) {
   const password = String(formData.get('password') ?? '')
   const fullName = String(formData.get('name') ?? '').trim()
   const phone = String(formData.get('phone') ?? '').trim()
+  const next = safeNext(String(formData.get('next') ?? '/account'))
 
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
@@ -34,7 +39,12 @@ export async function signup(formData: FormData) {
       },
     },
   })
-  if (error) redirect(`/login?error=${encodeURIComponent(error.message)}`)
+  if (error) redirect(`/login?error=${encodeURIComponent(error.message)}&next=${encodeURIComponent(next)}`)
 
-  redirect('/login?message=Check%20your%20email%20to%20confirm%20your%20account')
+  if (data.session) {
+    revalidatePath('/', 'layout')
+    redirect(next)
+  }
+
+  redirect(`/login?message=${encodeURIComponent('Account created. Please check your email to confirm your account, then continue to checkout.')}&next=${encodeURIComponent(next)}`)
 }
