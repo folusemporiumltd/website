@@ -21,10 +21,13 @@ async function updateProduct(formData: FormData) {
   const description = String(formData.get('description') || '').trim()
   const price = Number(formData.get('price'))
   const stock = Number(formData.get('stock_quantity'))
+  const defaultSizeGrams = Number(formData.get('default_size_grams'))
+  const categoryId = String(formData.get('category_id') || '') || null
   const imageUrl = String(formData.get('image_url') || '').trim() || null
-  if (!id || !name || !Number.isFinite(price) || price < 0 || !Number.isInteger(stock) || stock < 0) return
+  if (!id || !name || !Number.isFinite(price) || price < 0 || !Number.isInteger(stock) || stock < 0 || !Number.isInteger(defaultSizeGrams) || defaultSizeGrams <= 0) return
   await supabase.from('products').update({
-    name, description: description || null, price, stock_quantity: stock, image_url: imageUrl,
+    name, description: description || null, price, stock_quantity: stock,
+    default_size_grams: defaultSizeGrams, category_id: categoryId, image_url: imageUrl,
     featured: formData.get('featured') === 'on', is_active: formData.get('is_active') === 'on',
     updated_at: new Date().toISOString(),
   }).eq('id', id)
@@ -44,9 +47,10 @@ async function updateOrder(formData: FormData) {
 
 export default async function AdminPage() {
   const { supabase, profile } = await requireAdmin()
-  const [{ data: products }, { data: orders }] = await Promise.all([
-    supabase.from('products').select('id,name,slug,description,price,image_url,stock_quantity,featured,is_active').order('created_at', { ascending: false }),
+  const [{ data: products }, { data: orders }, { data: categories }] = await Promise.all([
+    supabase.from('products').select('id,name,slug,description,price,image_url,stock_quantity,featured,is_active,category_id,default_size_grams').order('created_at', { ascending: false }),
     supabase.from('orders').select('id,status,payment_status,total,phone,delivery_address,created_at').order('created_at', { ascending: false }).limit(50),
+    supabase.from('categories').select('id,name,slug').order('name'),
   ])
 
   return <main>
@@ -55,14 +59,17 @@ export default async function AdminPage() {
     <section className="section"><div className="container">
       <div className="section-head"><div><div className="eyebrow">Dashboard</div><h1>Welcome{profile?.full_name ? `, ${profile.full_name}` : ''}</h1><p style={{color:'var(--muted)'}}>Edit products and manage recent customer orders.</p></div></div>
       <h2 style={{color:'var(--burgundy)',marginTop:35}}>Product catalogue</h2>
+      <p style={{color:'var(--muted)',marginTop:6}}>Each product starts with a 500g default size. You can change the size, price, image, description, stock, category and featured/visibility settings here.</p>
       <div style={{display:'grid',gap:18,marginTop:18}}>{products?.map(product => <form key={product.id} action={updateProduct} style={{border:'1px solid #eadfd8',borderRadius:16,padding:20,background:'#fff'}}>
         <input type="hidden" name="id" value={product.id}/><input type="hidden" name="slug" value={product.slug}/>
-        <div style={{display:'grid',gridTemplateColumns:'minmax(0,2fr) minmax(120px,1fr) minmax(120px,1fr)',gap:14,alignItems:'end'}}>
+        <div style={{display:'grid',gridTemplateColumns:'minmax(0,2fr) minmax(120px,1fr) minmax(120px,1fr) minmax(120px,1fr)',gap:14,alignItems:'end'}}>
           <label>Name<input name="name" defaultValue={product.name} required style={{width:'100%'}}/></label>
           <label>Price (₦)<input name="price" type="number" min="0" step="100" defaultValue={product.price} required style={{width:'100%'}}/></label>
           <label>Stock<input name="stock_quantity" type="number" min="0" step="1" defaultValue={product.stock_quantity} required style={{width:'100%'}}/></label>
+          <label>Default size (g)<input name="default_size_grams" type="number" min="1" step="1" defaultValue={product.default_size_grams ?? 500} required style={{width:'100%'}}/></label>
+          <label>Category<select name="category_id" defaultValue={product.category_id ?? ''} style={{width:'100%'}}><option value="">Uncategorised</option>{categories?.map(category => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
+          <label style={{gridColumn:'2 / -1'}}>Image URL<input name="image_url" type="url" defaultValue={product.image_url ?? ''} placeholder="https://..." style={{width:'100%'}}/></label>
           <label style={{gridColumn:'1 / -1'}}>Description<textarea name="description" defaultValue={product.description ?? ''} rows={2} style={{width:'100%'}}/></label>
-          <label style={{gridColumn:'1 / -1'}}>Image URL<input name="image_url" type="url" defaultValue={product.image_url ?? ''} placeholder="https://..." style={{width:'100%'}}/></label>
         </div>
         <div style={{display:'flex',gap:20,flexWrap:'wrap',alignItems:'center',marginTop:14}}><label><input type="checkbox" name="featured" defaultChecked={product.featured}/> Featured</label><label><input type="checkbox" name="is_active" defaultChecked={product.is_active}/> Visible in shop</label><button className="btn btn-primary" type="submit">Save product</button></div>
       </form>)}</div>
