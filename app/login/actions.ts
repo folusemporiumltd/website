@@ -27,6 +27,9 @@ export async function signup(formData: FormData) {
   const password = String(formData.get('password') ?? '')
   const fullName = String(formData.get('name') ?? '').trim()
   const phone = String(formData.get('phone') ?? '').trim()
+  const address = String(formData.get('address') ?? '').trim()
+  const city = String(formData.get('city') ?? '').trim()
+  const state = String(formData.get('state') ?? '').trim()
   const next = safeNext(String(formData.get('next') ?? '/account'))
 
   const { data, error } = await supabase.auth.signUp({
@@ -36,6 +39,9 @@ export async function signup(formData: FormData) {
       data: {
         full_name: fullName,
         phone,
+        delivery_address: address,
+        delivery_city: city,
+        delivery_state: state,
       },
     },
   })
