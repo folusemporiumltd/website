@@ -124,11 +124,14 @@ begin
   end if;
 
   for v_item in
-    select oi.product_id, sum(oi.quantity)::integer as quantity, p.stock_quantity, p.name
-    from public.order_items oi
-    join public.products p on p.id = oi.product_id
-    where oi.order_id = v_order_id
-    group by oi.product_id, p.stock_quantity, p.name
+    select p.id as product_id, q.quantity, p.stock_quantity, p.name
+    from public.products p
+    join (
+      select product_id, sum(quantity)::integer as quantity
+      from public.order_items
+      where order_id = v_order_id
+      group by product_id
+    ) q on q.product_id = p.id
     for update of p
   loop
     if v_item.stock_quantity < v_item.quantity then
