@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 export async function GET(request: Request) {
   const reference = new URL(request.url).searchParams.get('reference')
@@ -15,11 +15,11 @@ export async function GET(request: Request) {
     })
     const data = await response.json()
 
-    if (!response.ok || !data.status || data.data?.status !== 'success') {
+    if (!response.ok || !data.status || data.data?.status !== 'success' || data.data?.currency !== 'NGN') {
       return NextResponse.json({ paid: false, message: data.message || 'Payment was not successful.' }, { status: 400 })
     }
 
-    const supabase = await createClient()
+    const supabase = createAdminClient()
     const { data: orderId, error } = await supabase.rpc('mark_order_paid', {
       p_payment_reference: reference,
       p_amount_kobo: Number(data.data.amount),
