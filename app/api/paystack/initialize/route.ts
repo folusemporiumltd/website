@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 type CheckoutItem = { id: string; quantity: number }
 
@@ -13,16 +13,23 @@ export async function POST(request: Request) {
     const secretKey = process.env.PAYSTACK_SECRET_KEY
     if (!secretKey) return NextResponse.json({ error: 'Paystack is not configured on the server.' }, { status: 500 })
 
-    const supabase = await createClient()
-    const productIds = items.map(item => item.id).filter(Boolean)
+    const supabase = createAdminClient()
+    const quantities = new Map<string, number>()
+    for (const item of items) {
+      const id = String(item?.id || '')
+      const quantity = Math.max(1, Math.min(Math.floor(Number(item?.quantity) || 1), 100))
+      if (!id) return NextResponse.json({ error: 'One or more cart items are invalid.' }, { status: 400 })
+      quantities.set(id, (quantities.get(id) || 0) + quantity)
+    }
+
+    const productIds = [...quantities.keys()]
     const { data: products, error: productsError } = await supabase.from('products').select('id,price,stock_quantity,is_active').in('id', productIds)
-    if (productsError || !products?.length) return NextResponse.json({ error: 'Unable to validate your cart.' }, { status: 400 })
+    if (productsError || !products?.length || products.length !== productIds.length) return NextResponse.json({ error: 'Unable to validate your cart.' }, { status: 400 })
 
     const byId = new Map(products.map(product => [product.id, product]))
     let subtotal = 0
-    for (const item of items) {
-      const product = byId.get(item.id)
-      const quantity = Math.max(1, Math.min(Math.floor(Number(item.quantity) || 1), 100))
+    for (const [id, quantity] of quantities) {
+      const product = byId.get(id)
       if (!product || !product.is_active || product.stock_quantity < quantity) return NextResponse.json({ error: 'One or more products are unavailable or out of stock.' }, { status: 400 })
       subtotal += Number(product.price) * quantity
     }
@@ -30,11 +37,12 @@ export async function POST(request: Request) {
     const deliveryFee = 0
     const total = subtotal + deliveryFee
     const deliveryAddress = [delivery.address, delivery.city, delivery.state].filter(Boolean).join(', ')
+    const normalizedItems = [...quantities].map(([id, quantity]) => ({ id, quantity }))
     const { data: orderId, error: orderError } = await supabase.rpc('create_pending_order', {
       p_email: String(email),
       p_phone: String(metadata?.customer_phone || ''),
       p_delivery_address: deliveryAddress,
-      p_items: items.map(item => ({ id: item.id, quantity: Math.max(1, Math.min(Math.floor(Number(item.quantity) || 1), 100)) })),
+      p_items: normalizedItems,
       p_payment_reference: reference,
       p_customer_name: String(metadata?.customer_name || ''),
     })
