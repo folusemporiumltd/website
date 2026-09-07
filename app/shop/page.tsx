@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { createServiceRoleClient } from '@/lib/supabase/server'
+import { createCatalogueClient } from '@/lib/supabase/server'
 import CartLink from '@/components/cart-link'
 import ProductCardActions from '@/components/product-card-actions'
 
@@ -12,9 +12,7 @@ type Variant = { id: string; product_id: string; size_grams: number; size_label:
 
 export default async function ShopPage({ searchParams }: { searchParams: Promise<{ category?: string }> }) {
   const { category } = await searchParams
-  // Catalogue reads run server-side with the service-role client. The key is never sent to the browser.
-  // This prevents public RLS/auth state from incorrectly hiding the active catalogue.
-  const supabase = createServiceRoleClient()
+  const supabase = await createCatalogueClient()
 
   const [productsResult, categoriesResult, variantsResult] = await Promise.all([
     supabase.from('products').select('id,name,slug,description,price,image_url,featured,stock_quantity,category_id,default_size_grams').eq('is_active', true).order('featured', { ascending: false }).order('created_at', { ascending: false }),
