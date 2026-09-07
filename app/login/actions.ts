@@ -5,8 +5,18 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 
+const PUBLIC_SITE_URL = 'https://website-smoky-kappa-22.vercel.app'
+
 function safeNext(value: string) {
   return value.startsWith('/') && !value.startsWith('//') ? value : '/account'
+}
+
+function getPublicOrigin(host: string | null, protocol: string) {
+  const forwardedHost = host?.split(',')[0]?.trim()
+  if (forwardedHost && !forwardedHost.startsWith('localhost:') && forwardedHost !== 'localhost') {
+    return `${protocol === 'https' ? 'https' : 'http'}://${forwardedHost}`
+  }
+  return process.env.NEXT_PUBLIC_SITE_URL || PUBLIC_SITE_URL
 }
 
 export async function login(formData: FormData) {
@@ -34,8 +44,8 @@ export async function signup(formData: FormData) {
   const next = safeNext(String(formData.get('next') ?? '/account'))
   const requestHeaders = await headers()
   const host = requestHeaders.get('x-forwarded-host') ?? requestHeaders.get('host')
-  const protocol = requestHeaders.get('x-forwarded-proto') ?? 'http'
-  const origin = host ? `${protocol}://${host}` : new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000').origin
+  const protocol = requestHeaders.get('x-forwarded-proto') ?? 'https'
+  const origin = getPublicOrigin(host, protocol)
   const confirmationUrl = `${origin}/auth/callback?next=${encodeURIComponent(next)}`
 
   const { data, error } = await supabase.auth.signUp({
