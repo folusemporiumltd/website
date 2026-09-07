@@ -38,20 +38,23 @@ export async function POST(request: Request) {
 
     const productIds = normalized.map(item => item.id)
     const variantIds = normalized.map(item => item.variant_id).filter(Boolean) as string[]
+
     const productsResult = await supabase
       .from('products')
       .select('id,name,price,stock_quantity,is_active')
       .in('id', productIds)
-    const variantsResult = variantIds.length
-      ? await supabase
-          .from('product_variants')
-          .select('id,product_id,size_grams,size_label,price,stock_quantity,is_active')
-          .in('id', variantIds)
-      : { data: [] as ProductVariant[], error: null }
+    if (productsResult.error) return NextResponse.json({ error: 'Unable to validate your cart.' }, { status: 400 })
+    const products = (productsResult.data || []) as unknown as Product[]
 
-    const products = (productsResult.data || []) as Product[]
-    const variants = (variantsResult.data || []) as ProductVariant[]
-    if (productsResult.error || variantsResult.error) return NextResponse.json({ error: 'Unable to validate your cart.' }, { status: 400 })
+    let variants: ProductVariant[] = []
+    if (variantIds.length) {
+      const variantsResult = await supabase
+        .from('product_variants')
+        .select('id,product_id,size_grams,size_label,price,stock_quantity,is_active')
+        .in('id', variantIds)
+      if (variantsResult.error) return NextResponse.json({ error: 'Unable to validate your cart.' }, { status: 400 })
+      variants = (variantsResult.data || []) as unknown as ProductVariant[]
+    }
 
     const byId = new Map(products.map((product: Product) => [product.id, product]))
     const byVariantId = new Map(variants.map((variant: ProductVariant) => [variant.id, variant]))
