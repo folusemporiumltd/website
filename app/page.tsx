@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 
 const categories = [
@@ -25,8 +26,18 @@ function PromiseIcon({ type }: { type: string }) {
   return <svg viewBox="0 0 24 24" aria-hidden="true" {...common}><path d="M20.8 8.8c0 5.2-8.8 10-8.8 10s-8.8-4.8-8.8-10C3.2 6 5.3 4 8 4c1.8 0 3.3.9 4 2.3C12.7 4.9 14.2 4 16 4c2.7 0 4.8 2 4.8 4.8Z"/></svg>
 }
 
-export default async function Home() {
+export default async function Home({ searchParams }: { searchParams: Promise<{ code?: string }> }) {
+  const params = await searchParams
   const supabase = await createClient()
+
+  // Some existing Supabase confirmation emails may still return to the Site URL
+  // with ?code=... instead of /auth/callback. Handle that legacy shape safely.
+  if (params.code) {
+    const { error } = await supabase.auth.exchangeCodeForSession(params.code)
+    if (!error) redirect('/login?message=Email%20confirmed%20successfully.%20Please%20sign%20in%20to%20continue.&next=%2Fcheckout&mode=signin')
+    redirect('/login?error=We%20could%20not%20confirm%20your%20email.%20Please%20request%20a%20new%20confirmation%20email.&next=%2Fcheckout&mode=signin')
+  }
+
   const { data: products } = await supabase.from('products').select('id,name,slug,description,price,image_url,featured').eq('is_active', true).eq('featured', true).order('created_at', { ascending: false }).limit(4)
   return (
     <main>
