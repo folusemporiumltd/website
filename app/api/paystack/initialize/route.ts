@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { createClient } from '@/lib/supabase/server'
 
 type CheckoutItem = { id: string; variant_id?: string; quantity: number }
 type Product = {
@@ -21,11 +22,18 @@ type ProductVariant = {
 
 export async function POST(request: Request) {
   try {
+    const authClient = await createClient()
+    const { data: claimsData } = await authClient.auth.getClaims()
+    const userEmail = typeof claimsData?.claims?.email === 'string' ? claimsData.claims.email : ''
+    if (!userEmail) return NextResponse.json({ error: 'Please sign in or create an account before payment.' }, { status: 401 })
+
     const { email, reference, callback_url, metadata } = await request.json()
+    const checkoutEmail = String(email || '').trim()
     const items: CheckoutItem[] = Array.isArray(metadata?.items) ? metadata.items : []
     const delivery = metadata?.delivery_address || {}
 
-    if (!email || !reference || !callback_url || !items.length) return NextResponse.json({ error: 'Missing required payment details.' }, { status: 400 })
+    if (!checkoutEmail || checkoutEmail.toLowerCase() !== userEmail.toLowerCase()) return NextResponse.json({ error: 'The checkout email must match your signed-in account.' }, { status: 403 })
+    if (!reference || !callback_url || !items.length) return NextResponse.json({ error: 'Missing required payment details.' }, { status: 400 })
     const secretKey = process.env.PAYSTACK_SECRET_KEY
     if (!secretKey) return NextResponse.json({ error: 'Paystack is not configured on the server.' }, { status: 500 })
 
@@ -76,14 +84,14 @@ export async function POST(request: Request) {
     const total = subtotal + deliveryFee
     const deliveryAddress = [delivery.address, delivery.city, delivery.state].filter(Boolean).join(', ')
     const { data: orderId, error: orderError } = await supabase.rpc('create_pending_order', {
-      p_email: String(email), p_phone: String(metadata?.customer_phone || ''), p_delivery_address: deliveryAddress,
+      p_email: checkoutEmail, p_phone: String(metadata?.customer_phone || ''), p_delivery_address: deliveryAddress,
       p_items: normalized, p_payment_reference: reference, p_customer_name: String(metadata?.customer_name || ''),
     })
     if (orderError || !orderId) return NextResponse.json({ error: orderError?.message || 'Unable to create your order.' }, { status: 400 })
 
     const response = await fetch('https://api.paystack.co/transaction/initialize', {
       method: 'POST', headers: { Authorization: `Bearer ${secretKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: String(email), amount: Math.round(total * 100), reference, callback_url, metadata: { ...metadata, order_id: orderId, subtotal, delivery_fee: deliveryFee, total } }), cache: 'no-store',
+      body: JSON.stringify({ email: checkoutEmail, amount: Math.round(total * 100), reference, callback_url, metadata: { ...metadata, order_id: orderId, subtotal, delivery_fee: deliveryFee, total } }), cache: 'no-store',
     })
     const data = await response.json()
     if (!response.ok || !data.status) return NextResponse.json({ error: data.message || 'Unable to initialize Paystack payment.' }, { status: 400 })
