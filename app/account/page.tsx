@@ -42,7 +42,8 @@ export default async function AccountPage() {
             <div><span>City / State</span><strong>{location}</strong></div>
           </div>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 22 }}>
-            <Link className="btn btn-primary" href="/shop">Continue shopping</Link>
+            <Link className="btn btn-primary" href="/checkout">Proceed to checkout</Link>
+            <Link className="btn btn-outline" href="/shop">Continue shopping</Link>
             <Link className="btn btn-outline" href="/cart">View cart</Link>
             <SignOutButton />
           </div>
