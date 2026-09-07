@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 type CheckoutItem = { id: string; variant_id?: string; quantity: number }
 
@@ -13,7 +13,7 @@ export async function POST(request: Request) {
     const secretKey = process.env.PAYSTACK_SECRET_KEY
     if (!secretKey) return NextResponse.json({ error: 'Paystack is not configured on the server.' }, { status: 500 })
 
-    const supabase = await createClient()
+    const supabase = createAdminClient()
     const normalized = items.map(item => ({
       id: String(item.id || ''),
       variant_id: item.variant_id ? String(item.variant_id) : undefined,
@@ -48,20 +48,14 @@ export async function POST(request: Request) {
     const total = subtotal + deliveryFee
     const deliveryAddress = [delivery.address, delivery.city, delivery.state].filter(Boolean).join(', ')
     const { data: orderId, error: orderError } = await supabase.rpc('create_pending_order', {
-      p_email: String(email),
-      p_phone: String(metadata?.customer_phone || ''),
-      p_delivery_address: deliveryAddress,
-      p_items: normalized,
-      p_payment_reference: reference,
-      p_customer_name: String(metadata?.customer_name || ''),
+      p_email: String(email), p_phone: String(metadata?.customer_phone || ''), p_delivery_address: deliveryAddress,
+      p_items: normalized, p_payment_reference: reference, p_customer_name: String(metadata?.customer_name || ''),
     })
     if (orderError || !orderId) return NextResponse.json({ error: orderError?.message || 'Unable to create your order.' }, { status: 400 })
 
     const response = await fetch('https://api.paystack.co/transaction/initialize', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${secretKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: String(email), amount: Math.round(total * 100), reference, callback_url, metadata: { ...metadata, order_id: orderId, subtotal, delivery_fee: deliveryFee, total } }),
-      cache: 'no-store',
+      method: 'POST', headers: { Authorization: `Bearer ${secretKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: String(email), amount: Math.round(total * 100), reference, callback_url, metadata: { ...metadata, order_id: orderId, subtotal, delivery_fee: deliveryFee, total } }), cache: 'no-store',
     })
     const data = await response.json()
     if (!response.ok || !data.status) return NextResponse.json({ error: data.message || 'Unable to initialize Paystack payment.' }, { status: 400 })
