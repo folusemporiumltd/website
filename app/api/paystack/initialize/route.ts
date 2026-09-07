@@ -2,6 +2,22 @@ import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 type CheckoutItem = { id: string; variant_id?: string; quantity: number }
+type Product = {
+  id: string
+  name: string
+  price: number | string
+  stock_quantity: number
+  is_active: boolean
+}
+type ProductVariant = {
+  id: string
+  product_id: string
+  size_grams: number | null
+  size_label: string | null
+  price: number | string
+  stock_quantity: number
+  is_active: boolean
+}
 
 export async function POST(request: Request) {
   try {
@@ -14,7 +30,7 @@ export async function POST(request: Request) {
     if (!secretKey) return NextResponse.json({ error: 'Paystack is not configured on the server.' }, { status: 500 })
 
     const supabase = createAdminClient()
-    const normalized = items.map(item => ({
+    const normalized = items.map((item: CheckoutItem) => ({
       id: String(item.id || ''),
       variant_id: item.variant_id ? String(item.variant_id) : undefined,
       quantity: Math.max(1, Math.min(Math.floor(Number(item.quantity) || 1), 100)),
@@ -22,14 +38,23 @@ export async function POST(request: Request) {
 
     const productIds = normalized.map(item => item.id)
     const variantIds = normalized.map(item => item.variant_id).filter(Boolean) as string[]
-    const [{ data: products, error: productsError }, { data: variants, error: variantsError }] = await Promise.all([
-      supabase.from('products').select('id,name,price,stock_quantity,is_active').in('id', productIds),
-      variantIds.length ? supabase.from('product_variants').select('id,product_id,size_grams,size_label,price,stock_quantity,is_active').in('id', variantIds) : Promise.resolve({ data: [], error: null } as any),
-    ])
-    if (productsError || variantsError) return NextResponse.json({ error: 'Unable to validate your cart.' }, { status: 400 })
+    const productsResult = await supabase
+      .from('products')
+      .select('id,name,price,stock_quantity,is_active')
+      .in('id', productIds)
+    const variantsResult = variantIds.length
+      ? await supabase
+          .from('product_variants')
+          .select('id,product_id,size_grams,size_label,price,stock_quantity,is_active')
+          .in('id', variantIds)
+      : { data: [] as ProductVariant[], error: null }
 
-    const byId = new Map((products || []).map(product => [product.id, product]))
-    const byVariantId = new Map((variants || []).map(variant => [variant.id, variant]))
+    const products = (productsResult.data || []) as Product[]
+    const variants = (variantsResult.data || []) as ProductVariant[]
+    if (productsResult.error || variantsResult.error) return NextResponse.json({ error: 'Unable to validate your cart.' }, { status: 400 })
+
+    const byId = new Map(products.map((product: Product) => [product.id, product]))
+    const byVariantId = new Map(variants.map((variant: ProductVariant) => [variant.id, variant]))
     let subtotal = 0
     for (const item of normalized) {
       const product = byId.get(item.id)
