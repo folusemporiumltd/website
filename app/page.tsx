@@ -1,13 +1,14 @@
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 
 const categories = [
-  ['🌾', 'Flours', 'Plantain Flour and Poundo Yam Flour for convenient everyday meals.'],
-  ['🥣', 'Breakfast & Mixes', 'Easy, nourishing blends made for busy Nigerian homes.'],
-  ['🌶️', 'Spices & Powders', 'Natural powders that add depth, flavour and convenience.'],
-  ['🛒', 'Grains & Pantry', 'Trusted pantry staples selected with care.'],
-  ['🥕', 'Fresh Produce', 'Wholesome produce for homes, food vendors and businesses.'],
-  ['🍵', 'Tea & Wellness', 'Simple plant-based choices for everyday living.'],
+  ['🌾', 'Flours', 'flours', 'Plantain Flour and Poundo Yam Flour for convenient everyday meals.'],
+  ['🥣', 'Breakfast & Mixes', 'breakfast-mixes', 'Easy, nourishing blends made for busy Nigerian homes.'],
+  ['🌶️', 'Spices & Powders', 'spices-powders', 'Natural powders that add depth, flavour and convenience.'],
+  ['🛒', 'Grains & Pantry', 'grains-pantry', 'Trusted pantry staples selected with care.'],
+  ['🥕', 'Fresh Produce', 'fresh-produce', 'Wholesome produce for homes, food vendors and businesses.'],
+  ['🍵', 'Tea & Wellness', 'tea-wellness', 'Simple plant-based choices for everyday living.'],
 ]
 
 const promises = [
@@ -25,15 +26,25 @@ function PromiseIcon({ type }: { type: string }) {
   return <svg viewBox="0 0 24 24" aria-hidden="true" {...common}><path d="M20.8 8.8c0 5.2-8.8 10-8.8 10s-8.8-4.8-8.8-10C3.2 6 5.3 4 8 4c1.8 0 3.3.9 4 2.3C12.7 4.9 14.2 4 16 4c2.7 0 4.8 2 4.8 4.8Z"/></svg>
 }
 
-export default async function Home() {
+export default async function Home({ searchParams }: { searchParams: Promise<{ code?: string }> }) {
+  const params = await searchParams
   const supabase = await createClient()
+
+  // Some existing Supabase confirmation emails may still return to the Site URL
+  // with ?code=... instead of /auth/callback. Handle that legacy shape safely.
+  if (params.code) {
+    const { error } = await supabase.auth.exchangeCodeForSession(params.code)
+    if (!error) redirect('/login?message=Email%20confirmed%20successfully.%20Please%20sign%20in%20to%20continue.&next=%2Fcheckout&mode=signin')
+    redirect('/login?error=We%20could%20not%20confirm%20your%20email.%20Please%20request%20a%20new%20confirmation%20email.&next=%2Fcheckout&mode=signin')
+  }
+
   const { data: products } = await supabase.from('products').select('id,name,slug,description,price,image_url,featured').eq('is_active', true).eq('featured', true).order('created_at', { ascending: false }).limit(4)
   return (
     <main>
       <div className="topbar"><div className="container"><span>Better Ingredients. Better Processing. Better Experience.</span><span>Serving homes & businesses across Nigeria</span></div></div>
       <header className="nav"><div className="container nav-inner"><Link className="brand" href="/"><div><img src="/folus-emporium-circular-logo.png" alt="Folus Emporium circular logo" /></div><span>FOLUS<br/>EMPORIUM<small>Nature’s Goodness, Purely Yours.</small></span></Link><nav className="navlinks"><Link href="/">Home</Link><Link href="/shop">Shop</Link><Link href="/account">My Account</Link><Link className="btn btn-primary" href="/shop">Shop Now</Link></nav></div></header>
-      <section className="hero"><div className="container hero-grid"><div><div className="eyebrow">Welcome to Folus Emporium</div><h1>Good food starts with <em>good ingredients.</em></h1><p>We curate and package quality food products and kitchen essentials designed to make everyday living simpler, better and more intentional.</p><div className="hero-actions"><Link className="btn btn-primary" href="/shop">Explore the Collection</Link><a className="btn btn-outline" href="https://wa.me/2349168157255">Chat on WhatsApp</a></div></div><div className="hero-card"><div className="quote"><div className="eyebrow">Our promise</div><strong>Better ingredients. Better processing. Better experience.</strong><p>From pantry staples to convenient mixes, every product is curated with care.</p></div></div></div></section>
-      <section className="section"><div className="container"><div className="section-head"><div><div className="eyebrow">Explore</div><h2>Shop by category</h2></div><p>Discover convenient food products and essentials created for households, food vendors, restaurants, supermarkets and more.</p></div><div className="categories">{categories.map(([icon,title,desc]) => <Link className="category" href={`/shop?category=${encodeURIComponent(title)}`} key={title}><div className="icon">{icon}</div><h3>{title}</h3><p>{desc}</p></Link>)}</div></div></section>
+      <section className="hero"><div className="container hero-grid"><div><div className="eyebrow">Welcome to Folus Emporium</div><h1>Good food starts with <em>good ingredients.</em></h1><p>We curate and package quality food products and kitchen essentials designed to make everyday living simpler, better and more intentional.</p><div className="hero-actions"><Link className="btn btn-primary" href="/shop">Explore the Collection</Link><a className="btn btn-outline" href="https://wa.me/2349168157255">Chat on WhatsApp</a></div></div><div className="hero-card"><div className="quote"><div className="eyebrow">Our promise</div><strong>Better ingredients. Better processing. Better experience.</strong><p>From fresh farm produce, every product is carefully sourced, processed, and packaged to meet high standards of safety, nutrition, and customer satisfaction.</p></div></div></div></section>
+      <section className="section"><div className="container"><div className="section-head"><div><div className="eyebrow">Explore</div><h2>Shop by category</h2></div><p>Discover convenient food products and essentials created for households, food vendors, restaurants, supermarkets and more.</p></div><div className="categories">{categories.map(([icon,title,slug,desc]) => <Link className="category" href={`/shop?category=${slug}`} key={title}><div className="icon">{icon}</div><h3>{title}</h3><p>{desc}</p></Link>)}</div></div></section>
       <section className="section promise"><div className="container"><div className="section-head"><div><div className="eyebrow">Why Folus Emporium</div><h2 style={{color:'#fff'}}>Curated with intention.</h2></div></div><div className="promise-grid">{promises.map((promise) => <div className="promise-card" key={promise.title}><div className="promise-icon"><PromiseIcon type={promise.icon} /></div><b>{promise.title}</b><p>{promise.description}</p></div>)}</div></div></section>
       <section className="section"><div className="container"><div className="section-head"><div><div className="eyebrow">Featured</div><h2>Our product collection</h2></div><Link className="btn btn-outline" href="/shop">View all products</Link></div>{products?.length ? <div className="products">{products.map((p) => <article className="product-card" key={p.id}><div className="product-image">{p.image_url ? <img src={p.image_url} alt={p.name} style={{width:'100%',height:'100%',objectFit:'cover'}}/> : p.name}</div><div className="product-body"><span className="status">Available for catalogue setup</span><h3>{p.name}</h3><p>{p.description}</p><strong>{Number(p.price) > 0 ? `₦${Number(p.price).toLocaleString('en-NG')}` : 'Price to be updated'}</strong></div></article>)}</div> : <div className="empty"><h3>Our collection is being prepared.</h3><p>Product catalogue setup is underway. Check the Shop page as we continue adding the collection.</p><Link className="btn btn-primary" href="/shop">Visit Shop</Link></div>}</div></section>
       <section className="cta"><div className="container"><div className="cta-box"><div><div className="eyebrow">For homes & businesses</div><h2>Let's make better food choices easier.</h2></div><Link className="btn btn-primary" href="/shop">Start Shopping</Link></div></div></section>

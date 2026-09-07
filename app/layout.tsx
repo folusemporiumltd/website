@@ -5,6 +5,11 @@ import { CartProvider } from '@/components/cart-provider'
 export const metadata: Metadata = {
   title: 'Folus Emporium | Curating Excellence for Life’s Finest Moments',
   description: 'Quality foods, pantry essentials, home solutions and thoughtfully curated products from Folus Emporium.',
+  icons: {
+    icon: '/icon.png',
+    shortcut: '/icon.png',
+    apple: '/icon.png',
+  },
 }
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

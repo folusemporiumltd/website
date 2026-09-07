@@ -9,6 +9,9 @@ export type CartItem = {
   price: number
   image_url?: string | null
   quantity: number
+  variantId?: string
+  sizeGrams?: number
+  sizeLabel?: string
 }
 
 type CartContextValue = {
