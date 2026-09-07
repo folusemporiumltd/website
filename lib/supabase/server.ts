@@ -31,16 +31,17 @@ export async function createClient() {
 }
 
 /**
- * Server-only catalogue client. The service-role key is never exposed to the browser.
- * This is used for public catalogue reads so RLS/auth state cannot hide active products.
+ * Server-only catalogue client. When the service-role key is configured in Vercel,
+ * this client bypasses RLS for public catalogue reads. If it is not configured,
+ * fall back to the normal publishable-key client so the public shop never crashes.
  */
-export function createServiceRoleClient() {
+export async function createCatalogueClient() {
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!serviceRoleKey) {
-    throw new Error('SUPABASE_SERVICE_ROLE_KEY is not configured')
+  if (serviceRoleKey) {
+    return createSupabaseClient(SUPABASE_URL, serviceRoleKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    })
   }
 
-  return createSupabaseClient(SUPABASE_URL, serviceRoleKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  })
+  return createClient()
 }
