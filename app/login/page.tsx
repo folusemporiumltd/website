@@ -8,6 +8,10 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
     <main>
       <section className="section">
         <div className="container" style={{ maxWidth: 680 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 28 }}>
+            <img src="/folus-emporium-circular-logo.png" alt="Folus Emporium logo" style={{ width: 58, height: 58, objectFit: 'contain' }} />
+            <div><strong style={{ color: 'var(--burgundy)', fontSize: 18 }}>FOLUS EMPORIUM</strong><div className="muted">Nature’s Goodness, Purely Yours.</div></div>
+          </div>
           <div className="eyebrow">{isCheckout ? 'Checkout registration' : 'Customer account'}</div>
           <h1>Welcome to Folus Emporium</h1>
           <p>{isCheckout ? 'Create your account to continue from your cart to secure Paystack payment.' : 'Sign in to access your account, or create a new account.'}</p>
