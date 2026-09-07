@@ -33,46 +33,37 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
             <form>
               <label htmlFor="name">Full name</label>
               <input id="name" name="name" type="text" autoComplete="name" placeholder="Your full name" required />
-
               <label htmlFor="phone">Phone number</label>
               <input id="phone" name="phone" type="tel" autoComplete="tel" placeholder="0800 000 0000" required />
-
               <label htmlFor="address">Delivery address</label>
               <textarea id="address" name="address" autoComplete="street-address" placeholder="House number, street, area" rows={4} required />
-
               <label htmlFor="city">City</label>
               <input id="city" name="city" type="text" autoComplete="address-level2" placeholder="Your city" required />
-
               <label htmlFor="state">State</label>
               <input id="state" name="state" type="text" autoComplete="address-level1" placeholder="Your state" required />
-
               <label htmlFor="email">Email</label>
               <input id="email" name="email" type="email" autoComplete="email" required />
-
               <label htmlFor="password">Password</label>
               <input id="password" name="password" type="password" autoComplete="new-password" minLength={6} required />
-
               <input type="hidden" name="next" value={next} />
-              <button className="btn btn-primary" formAction={signup}>Create account</button>
+              <button className="btn btn-primary auth-action-btn" formAction={signup}>Create account</button>
             </form>
           ) : (
             <form>
               <label htmlFor="email">Email</label>
               <input id="email" name="email" type="email" autoComplete="email" placeholder="you@example.com" required />
-
               <label htmlFor="password">Password</label>
               <input id="password" name="password" type="password" autoComplete="current-password" required />
-
               <input type="hidden" name="next" value={next} />
-              <button className="btn btn-primary" formAction={login}>Sign in and continue</button>
+              <button className="btn btn-primary auth-action-btn" formAction={login}>Sign in and continue</button>
             </form>
           )}
 
           <p style={{ marginTop: 20 }}>
             {mode === 'signup' ? (
-              <>Already have an account? <Link href={`/login?next=${encodeURIComponent(next)}&mode=signin`}>Sign in</Link></>
+              <>Already have an account? <Link className="auth-switch-btn" href={`/login?next=${encodeURIComponent(next)}&mode=signin`}>Sign in</Link></>
             ) : (
-              <>New to Folus Emporium? <Link href={`/login?next=${encodeURIComponent(next)}&mode=signup`}>Create an account</Link></>
+              <>New to Folus Emporium? <Link className="auth-switch-btn" href={`/login?next=${encodeURIComponent(next)}&mode=signup`}>Create an account</Link></>
             )}
           </p>
         </div>
