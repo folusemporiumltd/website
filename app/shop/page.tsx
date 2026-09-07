@@ -3,6 +3,9 @@ import { createClient } from '@/lib/supabase/server'
 import CartLink from '@/components/cart-link'
 import ProductCardActions from '@/components/product-card-actions'
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 type Product = { id: string; name: string; slug: string; description: string | null; price: number; image_url: string | null; featured: boolean; stock_quantity: number; category_id: string | null; default_size_grams: number | null }
 type Variant = { id: string; product_id: string; size_grams: number; size_label: string; price: number; stock_quantity: number; is_active: boolean }
 
