@@ -40,6 +40,12 @@ export async function updateSession(request: NextRequest) {
     pathname === '/shop' ||
     pathname.startsWith('/shop/') ||
     pathname === '/cart' ||
+    pathname === '/about' ||
+    pathname.startsWith('/about/') ||
+    pathname === '/blog' ||
+    pathname.startsWith('/blog/') ||
+    pathname === '/careers' ||
+    pathname.startsWith('/careers/') ||
     pathname === '/faq' ||
     pathname === '/shipping-policy' ||
     pathname === '/return-policy' ||
