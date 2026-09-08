@@ -15,7 +15,7 @@ export async function requestPasswordReset(formData: FormData) {
   })
 
   if (error) {
-    redirect(`/reset-password?error=${encodeURIComponent('We could not send the password email. Please try again.')}`)
+    redirect(`/reset-password?error=${encodeURIComponent(error.message)}`)
   }
 
   redirect('/reset-password?message=If+that+email+has+an+account%2C+a+secure+password+link+has+been+sent.')
