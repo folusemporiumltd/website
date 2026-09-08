@@ -44,6 +44,20 @@ async function updateVariant(formData: FormData) {
   revalidatePath('/shop'); revalidatePath('/admin')
 }
 
+async function updateStorefrontContent(formData: FormData) {
+  'use server'
+  const { supabase } = await requireAdmin()
+  const raw = String(formData.get('storefront_config') || '')
+  try {
+    const config = JSON.parse(raw)
+    if (!config || typeof config !== 'object' || Array.isArray(config)) return
+    await supabase.from('storefront_content').update({ config, updated_at: new Date().toISOString() }).eq('id', true)
+    revalidatePath('/'); revalidatePath('/admin')
+  } catch {
+    return
+  }
+}
+
 async function updateOrder(formData: FormData) {
   'use server'
   const { supabase } = await requireAdmin()
@@ -57,11 +71,12 @@ async function updateOrder(formData: FormData) {
 
 export default async function AdminPage() {
   const { supabase, profile } = await requireAdmin()
-  const [{ data: products }, { data: orders }, { data: categories }, { data: variants }] = await Promise.all([
+  const [{ data: products }, { data: orders }, { data: categories }, { data: variants }, { data: storefront }] = await Promise.all([
     supabase.from('products').select('id,name,slug,description,price,image_url,stock_quantity,featured,is_active,category_id,default_size_grams').order('created_at', { ascending: false }),
     supabase.from('orders').select('id,status,payment_status,total,phone,delivery_address,created_at').order('created_at', { ascending: false }).limit(50),
     supabase.from('categories').select('id,name,slug').order('name'),
     supabase.from('product_variants').select('id,product_id,size_grams,size_label,price,stock_quantity,is_active').order('size_grams'),
+    supabase.from('storefront_content').select('config').eq('id', true).maybeSingle(),
   ])
   const variantsByProduct = new Map<string, typeof variants>()
   for (const variant of variants ?? []) {
@@ -75,6 +90,14 @@ export default async function AdminPage() {
     <header className="nav"><div className="container nav-inner"><a className="brand" href="/"><img src="/folus-emporium-circular-logo.png" alt="Folus Emporium logo"/><span>FOLUS<br/>EMPORIUM<small>Admin</small></span></a><nav className="navlinks"><a href="/">Storefront</a><a href="/shop">Shop</a><a href="/account">My Account</a></nav></div></header>
     <section className="section"><div className="container">
       <div className="section-head"><div><div className="eyebrow">Dashboard</div><h1>Welcome{profile?.full_name ? `, ${profile.full_name}` : ''}</h1><p style={{color:'var(--muted)'}}>Manage product information, package sizes, inventory and recent orders.</p></div></div>
+      <section style={{border:'1px solid #eadfd8',borderRadius:16,padding:20,background:'#fff',marginTop:28}}>
+        <h2 style={{color:'var(--burgundy)',marginTop:0}}>Storefront header & homepage</h2>
+        <p style={{color:'var(--muted)',marginTop:6}}>Edit the announcement, utility links, social links, main menu, hero banners and trust features. Keep the same field names and valid URLs when updating.</p>
+        <form action={updateStorefrontContent} style={{display:'grid',gap:12}}>
+          <label>Storefront configuration (JSON)<textarea name="storefront_config" defaultValue={JSON.stringify(storefront?.config ?? {}, null, 2)} rows={28} style={{fontFamily:'ui-monospace, SFMono-Regular, Menlo, monospace'}} required/></label>
+          <div><button className="btn btn-primary" type="submit">Save storefront settings</button></div>
+        </form>
+      </section>
       <h2 style={{color:'var(--burgundy)',marginTop:35}}>Product catalogue</h2>
       <p style={{color:'var(--muted)',marginTop:6}}>Upload the exact product flyer, edit descriptions, set prices and manage stock without rebuilding the website.</p>
       <div style={{display:'grid',gap:18,marginTop:18}}>{products?.map(product => <div key={product.id} style={{border:'1px solid #eadfd8',borderRadius:16,padding:20,background:'#fff'}}>
