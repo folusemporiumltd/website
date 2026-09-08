@@ -1,0 +1,42 @@
+'use server'
+
+import { redirect } from 'next/navigation'
+import { createClient } from '@/lib/supabase/server'
+
+const PUBLIC_SITE_URL = 'https://website-smoky-kappa-22.vercel.app'
+
+export async function requestPasswordReset(formData: FormData) {
+  const email = String(formData.get('email') ?? '').trim()
+  if (!email) redirect('/reset-password?error=Enter+your+email+address.')
+
+  const supabase = await createClient()
+  const redirectTo = `${PUBLIC_SITE_URL}/auth/callback?next=${encodeURIComponent('/reset-password?mode=update')}`
+  const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo })
+
+  if (error) {
+    redirect(`/reset-password?error=${encodeURIComponent('We could not send the password email. Please try again.')}`)
+  }
+
+  redirect('/reset-password?message=If+that+email+has+an+account%2C+a+secure+password+link+has+been+sent.')
+}
+
+export async function updatePassword(formData: FormData) {
+  const password = String(formData.get('password') ?? '')
+  const confirmPassword = String(formData.get('confirm_password') ?? '')
+
+  if (password.length < 8) {
+    redirect('/reset-password?mode=update&error=Choose+a+password+with+at+least+8+characters.')
+  }
+  if (password !== confirmPassword) {
+    redirect('/reset-password?mode=update&error=The+passwords+do+not+match.')
+  }
+
+  const supabase = await createClient()
+  const { error } = await supabase.auth.updateUser({ password })
+
+  if (error) {
+    redirect('/reset-password?error=Your+password+link+has+expired+or+is+invalid.+Request+a+new+one.')
+  }
+
+  redirect('/admin')
+}
