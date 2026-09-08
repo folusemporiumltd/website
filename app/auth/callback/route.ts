@@ -21,5 +21,9 @@ export async function GET(request: Request) {
     return NextResponse.redirect(new URL(`/login?error=${encodeURIComponent('We could not confirm your email. Please request a new confirmation email and try again.')}&next=${encodeURIComponent(next)}&mode=signin`, url.origin))
   }
 
+  if (next.startsWith('/reset-password')) {
+    return NextResponse.redirect(new URL(next, url.origin))
+  }
+
   return NextResponse.redirect(new URL(`/login?message=${encodeURIComponent('Email confirmed successfully. Please sign in to continue your checkout.')}&next=${encodeURIComponent(next)}&mode=signin`, url.origin))
 }

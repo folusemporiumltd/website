@@ -59,6 +59,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
             </form>
           )}
 
+          {mode === 'signin' && <p style={{ marginTop: 16 }}><Link className="auth-switch-btn" href="/reset-password">Forgot your password?</Link></p>}
           <p style={{ marginTop: 20 }}>
             {mode === 'signup' ? (
               <>Already have an account? <Link className="auth-switch-btn" href={`/login?next=${encodeURIComponent(next)}&mode=signin`}>Sign in</Link></>
