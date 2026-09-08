@@ -55,7 +55,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ c
   }
 
   const [{ data: products }, { data: storefrontContent }, { data: headerCategories }] = await Promise.all([
-    supabase.from('products').select('id,name,slug,description,price,image_url,featured,stock_quantity').eq('is_active', true).eq('featured', true).order('created_at', { ascending: false }).limit(4),
+    supabase.from('products').select('id,name,slug,description,price,image_url,featured,stock_quantity').eq('is_active', true).order('featured', { ascending: false }).order('created_at', { ascending: false }),
     supabase.from('storefront_content').select('config').eq('id', true).maybeSingle(),
     supabase.from('categories').select('name,slug').order('name'),
   ])
