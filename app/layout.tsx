@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import './storefront-enhancements.css'
 import { CartProvider } from '@/components/cart-provider'
 import { WishlistProvider } from '@/components/wishlist-provider'
 
