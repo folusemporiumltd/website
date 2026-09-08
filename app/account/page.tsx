@@ -3,56 +3,15 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import SignOutButton from './sign-out-button'
 
-export default async function AccountPage() {
-  const supabase = await createClient()
-  const { data: authData } = await supabase.auth.getUser()
-  const user = authData.user
-
-  if (!user) redirect('/login?next=/account&mode=signin')
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('full_name,phone,role')
-    .eq('id', user.id)
-    .maybeSingle()
-
-  const metadata = user.user_metadata ?? {}
-  const fullName = profile?.full_name || metadata.full_name || 'Customer'
-  const phone = profile?.phone || metadata.phone || 'Not provided'
-  const address = metadata.delivery_address || 'Not provided'
-  const city = metadata.delivery_city || ''
-  const state = metadata.delivery_state || ''
-  const location = [city, state].filter(Boolean).join(', ') || 'Not provided'
-  const isAdmin = profile?.role === 'admin'
-
-  return (
-    <main>
-      <header className="nav"><div className="container nav-inner"><Link className="brand" href="/"><img src="/folus-emporium-circular-logo.png" alt="Folus Emporium logo"/><span>FOLUS<br/>EMPORIUM<small>Nature’s Goodness, Purely Yours.</small></span></Link><nav className="navlinks"><Link href="/">Home</Link><Link href="/shop">Shop</Link><Link href="/cart">Cart</Link>{isAdmin ? <Link href="/admin/dashboard">Admin</Link> : null}</nav></div></header>
-      <section className="section"><div className="container" style={{ maxWidth: 760 }}>
-        <div className="eyebrow">{isAdmin ? 'Administrator account' : 'Customer account'}</div>
-        <h1>My Account</h1>
-        <p>Welcome back, {fullName}.</p>
-
-        {isAdmin ? <div style={{background:'linear-gradient(135deg,#5a1020,#741a2d)',color:'#fff',borderRadius:20,padding:24,marginTop:24,marginBottom:18}}><div className="eyebrow">Admin access</div><h2 style={{color:'#fff',margin:'8px 0 10px'}}>Folus Emporium Admin Dashboard</h2><p style={{color:'rgba(255,255,255,.82)',lineHeight:1.65}}>Manage products, inventory, orders, payments, customers and storefront settings from the ecommerce administration dashboard.</p><Link className="btn" style={{background:'#fff',color:'var(--burgundy)',marginTop:8}} href="/admin/dashboard">Open Admin Dashboard</Link></div> : null}
-
-        <div className="cart-summary" style={{ position: 'static', marginTop: 24 }}>
-          <h2>Your details</h2>
-          <div className="account-details">
-            <div><span>Full name</span><strong>{fullName}</strong></div>
-            <div><span>Email</span><strong>{user.email}</strong></div>
-            <div><span>Phone</span><strong>{phone}</strong></div>
-            <div><span>Delivery address</span><strong>{address}</strong></div>
-            <div><span>City / State</span><strong>{location}</strong></div>
-            {isAdmin ? <div><span>Account role</span><strong>Administrator</strong></div> : null}
-          </div>
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 22 }}>
-            {isAdmin ? <Link className="btn btn-primary" href="/admin/dashboard">Admin Dashboard</Link> : <Link className="btn btn-primary" href="/checkout">Proceed to checkout</Link>}
-            <Link className="btn btn-outline" href="/shop">Continue shopping</Link>
-            <Link className="btn btn-outline" href="/cart">View cart</Link>
-            <SignOutButton />
-          </div>
-        </div>
-      </div></section>
-    </main>
-  )
+const stages=['pending','processing','shipped','delivered']
+function money(v:number|string|null){return `₦${Number(v??0).toLocaleString('en-NG')}`}
+export default async function AccountPage(){
+ const supabase=await createClient();const {data:authData}=await supabase.auth.getUser();const user=authData.user;if(!user)redirect('/login?next=/account&mode=signin')
+ const [{data:profile},{data:orders}]=await Promise.all([supabase.from('profiles').select('full_name,phone,role').eq('id',user.id).maybeSingle(),supabase.from('orders').select('id,status,payment_status,total,created_at,delivery_address,payment_reference').eq('user_id',user.id).order('created_at',{ascending:false})])
+ const m=user.user_metadata??{},fullName=profile?.full_name||m.full_name||'Customer',phone=profile?.phone||m.phone||'Not provided',address=m.delivery_address||'Not provided',location=[m.delivery_city,m.delivery_state].filter(Boolean).join(', ')||'Not provided',isAdmin=profile?.role==='admin'
+ return <main><header className="nav"><div className="container nav-inner"><Link className="brand" href="/"><img src="/folus-emporium-circular-logo.png" alt="Folus Emporium logo"/><span>FOLUS<br/>EMPORIUM<small>Curating Excellence for Life’s Finest Moments.</small></span></Link><nav className="navlinks"><Link href="/">Home</Link><Link href="/shop">Shop</Link><Link href="/cart">Cart</Link>{isAdmin?<Link href="/admin/dashboard">Admin</Link>:null}</nav></div></header><section className="section"><div className="container" style={{maxWidth:900}}><div className="eyebrow">{isAdmin?'Administrator account':'Customer account'}</div><h1>My Account</h1><p>Welcome back, {fullName}.</p>
+ {isAdmin?<div style={{background:'var(--burgundy)',color:'#fff',borderRadius:20,padding:24,margin:'24px 0'}}><h2 style={{color:'#fff'}}>Folus Emporium Admin Dashboard</h2><p>Manage ecommerce operations from your secure administration dashboard.</p><Link className="btn" style={{background:'#fff',color:'var(--burgundy)'}} href="/admin/dashboard">Open Admin Dashboard</Link></div>:null}
+ <div className="cart-summary" style={{position:'static',marginTop:24}}><h2>Your details</h2><div className="account-details"><div><span>Full name</span><strong>{fullName}</strong></div><div><span>Email</span><strong>{user.email}</strong></div><div><span>Phone</span><strong>{phone}</strong></div><div><span>Delivery address</span><strong>{address}</strong></div><div><span>City / State</span><strong>{location}</strong></div></div></div>
+ <section style={{marginTop:38}}><div className="eyebrow">Purchases</div><h2 style={{color:'var(--burgundy)'}}>Order history & tracking</h2>{orders?.length? <div style={{display:'grid',gap:16}}>{orders.map(o=>{const current=stages.indexOf(o.status);return <article key={o.id} style={{background:'#fff',border:'1px solid var(--line)',borderRadius:18,padding:20}}><div style={{display:'flex',justifyContent:'space-between',gap:16,flexWrap:'wrap'}}><div><strong>Order #{o.id.slice(0,8).toUpperCase()}</strong><p className="muted">{new Date(o.created_at).toLocaleString('en-NG')}</p></div><div><strong>{money(o.total)}</strong><p className="muted">Payment: {o.payment_status}</p></div></div>{o.status==='cancelled'?<p style={{color:'var(--burgundy)',fontWeight:700}}>Order cancelled</p>:<div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:6,marginTop:16}}>{stages.map((s,i)=><div key={s} style={{textAlign:'center',padding:'9px 4px',borderRadius:9,background:i<=current?'var(--burgundy)':'#f2ebe5',color:i<=current?'#fff':'var(--muted)',fontSize:11,fontWeight:700,textTransform:'capitalize'}}>{s}</div>)}</div>}<p className="muted" style={{marginBottom:0}}>Delivery: {o.delivery_address||'Delivery details on order'}</p></article>})}</div>:<div className="empty"><h3>No orders yet</h3><p>Your purchases and delivery progress will appear here.</p><Link className="btn btn-primary" href="/shop">Start shopping</Link></div>}</section>
+ <div style={{display:'flex',gap:12,flexWrap:'wrap',marginTop:28}}><Link className="btn btn-outline" href="/shop">Continue shopping</Link><Link className="btn btn-outline" href="/cart">View cart</Link><SignOutButton/></div></div></section></main>
 }
