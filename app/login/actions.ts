@@ -19,17 +19,35 @@ function getPublicOrigin(host: string | null, protocol: string) {
   return process.env.NEXT_PUBLIC_SITE_URL || PUBLIC_SITE_URL
 }
 
+async function resolvePostLoginDestination(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  requestedNext: string,
+) {
+  // Explicit workflow destinations such as checkout should always be respected.
+  if (requestedNext !== '/account' && requestedNext !== '/') return requestedNext
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', userId)
+    .maybeSingle()
+
+  return profile?.role === 'admin' ? '/admin' : '/account'
+}
+
 export async function login(formData: FormData) {
   const supabase = await createClient()
   const email = String(formData.get('email') ?? '').trim()
   const password = String(formData.get('password') ?? '')
   const next = safeNext(String(formData.get('next') ?? '/account'))
 
-  const { error } = await supabase.auth.signInWithPassword({ email, password })
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password })
   if (error) redirect(`/login?error=${encodeURIComponent(error.message)}&next=${encodeURIComponent(next)}&mode=signin`)
 
+  const destination = await resolvePostLoginDestination(supabase, data.user.id, next)
   revalidatePath('/', 'layout')
-  redirect(next)
+  redirect(destination)
 }
 
 export async function signup(formData: FormData) {
@@ -65,9 +83,10 @@ export async function signup(formData: FormData) {
 
   if (error) redirect(`/login?error=${encodeURIComponent(error.message)}&next=${encodeURIComponent(next)}&mode=signup`)
 
-  if (data.session) {
+  if (data.session && data.user) {
+    const destination = await resolvePostLoginDestination(supabase, data.user.id, next)
     revalidatePath('/', 'layout')
-    redirect(next)
+    redirect(destination)
   }
 
   redirect(`/login?message=${encodeURIComponent('Account created. We sent a confirmation link to your email. After confirming it, you will return here to sign in and continue your checkout.')}&next=${encodeURIComponent(next)}&mode=signin`)
