@@ -52,7 +52,21 @@ export function StorefrontHeader({ config, categories }: { config: Config; categ
       <div className="header-tools"><Link href="/account" aria-label="My account"><Icon name="account"/><span>Account</span></Link><Link href="/wishlist" aria-label="Wishlist"><Icon name="heart"/><span>Wishlist</span></Link><CartLink/></div>
       <button className="mobile-menu-toggle" aria-label="Open menu" onClick={() => setMobileOpen(v => !v)}>{mobileOpen ? '×' : '☰'}</button>
     </div></div>
-    <nav className={'primary-navigation ' + (mobileOpen ? 'open' : '')}><div className="container">{(config.navigation ?? []).map(([label, href]) => <Link href={href} onClick={() => setMobileOpen(false)} key={label}>{label}{label === 'Categories' && <Icon name="chevron"/>}</Link>)}</div></nav>
+    <nav className={'primary-navigation ' + (mobileOpen ? 'open' : '')}>
+      <div className="container">
+        {(config.navigation ?? []).map(([label, href]) => label === 'Categories' ? (
+          <div className="nav-category-dropdown" key={label}>
+            <Link className="nav-category-trigger" href="/shop" onClick={() => setMobileOpen(false)} aria-haspopup="true">
+              {label}<Icon name="chevron"/>
+            </Link>
+            <div className="nav-category-menu" role="menu" aria-label="Product categories">
+              <Link href="/shop" role="menuitem" onClick={() => setMobileOpen(false)}>All Products</Link>
+              {categories.map(item => <Link href={`/shop?category=${item.slug}`} role="menuitem" onClick={() => setMobileOpen(false)} key={item.slug}>{item.name}</Link>)}
+            </div>
+          </div>
+        ) : <Link href={href} onClick={() => setMobileOpen(false)} key={label}>{label}</Link>)}
+      </div>
+    </nav>
   </header>
 }
 
