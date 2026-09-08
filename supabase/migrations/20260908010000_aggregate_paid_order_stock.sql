@@ -20,7 +20,7 @@ begin
 
   for v_item in
     select a.variant_id, a.product_id, a.quantity, pv.stock_quantity as variant_stock,
-           p.stock_quantity as product_stock, coalesce(pv.name, p.name) as product_name
+           p.stock_quantity as product_stock, p.name as product_name
     from (
       select variant_id, product_id, sum(quantity)::integer as quantity
       from public.order_items where order_id = v_order_id
