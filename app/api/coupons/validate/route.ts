@@ -1,0 +1,3 @@
+import {NextResponse} from 'next/server'
+import {createClient} from '@/lib/supabase/server'
+export async function POST(req:Request){try{const {code,subtotal}=await req.json();const amount=Number(subtotal);if(!String(code||'').trim()||!Number.isFinite(amount)||amount<0)return NextResponse.json({valid:false,message:'Enter a valid coupon code.'},{status:400});const supabase=await createClient();const {data,error}=await supabase.rpc('validate_coupon',{p_code:String(code).trim(),p_subtotal:amount});if(error)return NextResponse.json({valid:false,message:'Unable to validate coupon.'},{status:400});return NextResponse.json(data)}catch{return NextResponse.json({valid:false,message:'Unable to validate coupon.'},{status:400})}}
