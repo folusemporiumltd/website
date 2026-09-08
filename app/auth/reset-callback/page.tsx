@@ -1,11 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
 export default function ResetCallbackPage() {
-  const [message, setMessage] = useState('Preparing your secure password reset…')
-
   useEffect(() => {
     const completeRecovery = async () => {
       const supabase = createClient()
@@ -47,7 +45,7 @@ export default function ResetCallbackPage() {
         <div className="container" style={{ maxWidth: 680 }}>
           <div className="eyebrow">Account security</div>
           <h1>Securing your password reset</h1>
-          <p>{message}</p>
+          <p>Preparing your secure password reset…</p>
         </div>
       </section>
     </main>
