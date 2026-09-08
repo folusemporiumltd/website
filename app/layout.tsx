@@ -6,9 +6,9 @@ export const metadata: Metadata = {
   title: 'Folus Emporium | Curating Excellence for Life’s Finest Moments',
   description: 'Quality foods, pantry essentials, home solutions and thoughtfully curated products from Folus Emporium.',
   icons: {
-    icon: '/icon.png',
-    shortcut: '/icon.png',
-    apple: '/icon.png',
+    icon: [{ url: '/icon.png', type: 'image/png' }],
+    shortcut: [{ url: '/icon.png', type: 'image/png' }],
+    apple: [{ url: '/apple-icon.png', type: 'image/png' }],
   },
 }
 
