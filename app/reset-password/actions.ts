@@ -10,8 +10,9 @@ export async function requestPasswordReset(formData: FormData) {
   if (!email) redirect('/reset-password?error=Enter+your+email+address.')
 
   const supabase = await createClient()
-  const redirectTo = `${PUBLIC_SITE_URL}/auth/callback?next=${encodeURIComponent('/reset-password?mode=update')}`
-  const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo })
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${PUBLIC_SITE_URL}/auth/reset-callback`,
+  })
 
   if (error) {
     redirect(`/reset-password?error=${encodeURIComponent('We could not send the password email. Please try again.')}`)
