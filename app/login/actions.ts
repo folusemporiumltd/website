@@ -25,11 +25,17 @@ export async function login(formData: FormData) {
   const password = String(formData.get('password') ?? '')
   const next = safeNext(String(formData.get('next') ?? '/account'))
 
-  const { error } = await supabase.auth.signInWithPassword({ email, password })
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password })
   if (error) redirect(`/login?error=${encodeURIComponent(error.message)}&next=${encodeURIComponent(next)}&mode=signin`)
 
+  let destination = next
+  if (next === '/account' && data.user?.id) {
+    const { data: profile } = await supabase.from('profiles').select('role').eq('id', data.user.id).maybeSingle()
+    if (profile?.role === 'admin') destination = '/admin/dashboard'
+  }
+
   revalidatePath('/', 'layout')
-  redirect(next)
+  redirect(destination)
 }
 
 export async function signup(formData: FormData) {
