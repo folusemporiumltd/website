@@ -39,7 +39,10 @@ export async function updateSession(request: NextRequest) {
     pathname === '/shop' ||
     pathname.startsWith('/shop/') ||
     pathname === '/cart' ||
+    pathname === '/checkout' ||
     pathname.startsWith('/payment/callback') ||
+    pathname === '/api/paystack/initialize' ||
+    pathname === '/api/paystack/verify' ||
     pathname === '/api/paystack/webhook'
 
   if (!user && !publicRoute) {
