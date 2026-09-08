@@ -1,53 +1,5 @@
 'use client'
-
 import Link from 'next/link'
-import { useState } from 'react'
-import { useCart } from '@/components/cart-provider'
-
-export default function CheckoutPage() {
-  const { items, subtotal } = useCart()
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    setError('')
-    setLoading(true)
-    const form = new FormData(e.currentTarget)
-    const email = String(form.get('email') || '').trim()
-    const customerName = String(form.get('name') || '').trim()
-    const customerPhone = String(form.get('phone') || '').trim()
-    const address = String(form.get('address') || '').trim()
-    const city = String(form.get('city') || '').trim()
-    const state = String(form.get('state') || '').trim()
-    const reference = `FE-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`
-
-    try {
-      const response = await fetch('/api/paystack/initialize', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email,
-          reference,
-          callback_url: `${window.location.origin}/payment/callback`,
-          metadata: {
-            customer_name: customerName,
-            customer_phone: customerPhone,
-            delivery_address: { address, city, state },
-            items: items.map(item => ({ id: item.id.split(':')[0], variant_id: item.variantId, quantity: item.quantity })),
-          },
-        }),
-      })
-      const data = await response.json()
-      if (!response.ok) throw new Error(data.error || 'Unable to start payment.')
-      window.location.href = data.authorization_url
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to start payment.')
-      setLoading(false)
-    }
-  }
-
-  if (!items.length) return <main><section className="section"><div className="container empty"><h1>Your cart is empty</h1><p>Add products before proceeding to checkout.</p><Link className="btn btn-primary" href="/shop">Shop now</Link></div></section></main>
-
-  return <main><header className="nav"><div className="container nav-inner"><Link className="brand" href="/"><img src="/folus-emporium-circular-logo.png" alt="Folus Emporium circular logo"/><span>FOLUS<br/>EMPORIUM<small>Nature’s Goodness</small></span></Link><nav className="navlinks"><Link href="/shop">Shop</Link><Link href="/cart">Cart</Link></nav></div></header><section className="section"><div className="container cart-layout"><form className="cart-summary" onSubmit={handleSubmit} style={{position:'static'}}><div className="eyebrow">Secure checkout</div><h1>Delivery & payment details</h1><p className="muted">Your Folus Emporium account is required before payment so your order and delivery details can be securely linked to you.</p><label>Full name<input required name="name" autoComplete="name" placeholder="Your full name" /></label><label>Email address<input required type="email" name="email" autoComplete="email" placeholder="you@example.com" /></label><label>Phone number<input required type="tel" name="phone" autoComplete="tel" placeholder="0800 000 0000" /></label><label>Delivery address<textarea required name="address" autoComplete="street-address" placeholder="House number, street, area" rows={4} /></label><label>City<input required name="city" autoComplete="address-level2" placeholder="Ibadan" /></label><label>State<input required name="state" autoComplete="address-level1" placeholder="Oyo" /></label>{error && <p role="alert" className="muted" style={{color:'var(--burgundy)'}}>{error}</p>}<button className="btn btn-primary checkout-btn" type="submit" disabled={loading}>{loading ? 'Connecting to Paystack…' : 'Pay securely with Paystack'}</button><p className="muted">Your payable amount is calculated from the current catalogue prices on our server before Paystack is initialized.</p></form><aside className="cart-summary" style={{position:'static'}}><div className="eyebrow">Your order</div><h2>Order summary</h2>{items.map(item => <div className="summary-row" key={item.id}><span>{item.name}{item.sizeLabel ? ` · ${item.sizeLabel}` : ''} × {item.quantity}</span><strong>₦{(item.price*item.quantity).toLocaleString('en-NG')}</strong></div>)}<div className="summary-row" style={{marginTop:18}}><span>Subtotal</span><strong>₦{subtotal.toLocaleString('en-NG')}</strong></div><div className="summary-row"><span>Delivery</span><strong>₦0</strong></div><div className="summary-row" style={{marginTop:8}}><span>Total</span><strong>₦{subtotal.toLocaleString('en-NG')}</strong></div><p className="muted">Delivery fee is currently ₦0. A delivery-fee schedule can be added when your delivery zones are defined.</p></aside></div></section></main>
-}
+import {useState} from 'react'
+import {useCart} from '@/components/cart-provider'
+export default function CheckoutPage(){const {items,subtotal}=useCart();const [loading,setLoading]=useState(false),[error,setError]=useState(''),[coupon,setCoupon]=useState(''),[discount,setDiscount]=useState(0),[couponMsg,setCouponMsg]=useState('');async function applyCoupon(){setCouponMsg('Checking…');const r=await fetch('/api/coupons/validate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:coupon,subtotal})});const d=await r.json();if(d.valid){setCoupon(String(d.code));setDiscount(Number(d.discount));setCouponMsg(`Coupon ${d.code} applied — you save ₦${Number(d.discount).toLocaleString('en-NG')}.`)}else{setDiscount(0);setCouponMsg(d.message||'Coupon is not valid.')}}async function handleSubmit(e:React.FormEvent<HTMLFormElement>){e.preventDefault();setError('');setLoading(true);const f=new FormData(e.currentTarget),email=String(f.get('email')||'').trim(),customerName=String(f.get('name')||'').trim(),customerPhone=String(f.get('phone')||'').trim(),address=String(f.get('address')||'').trim(),city=String(f.get('city')||'').trim(),state=String(f.get('state')||'').trim(),reference=`FE-${Date.now()}-${Math.random().toString(36).slice(2,8).toUpperCase()}`;try{const r=await fetch('/api/paystack/initialize',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,reference,callback_url:`${window.location.origin}/payment/callback`,coupon_code:discount>0?coupon:'',metadata:{customer_name:customerName,customer_phone:customerPhone,delivery_address:{address,city,state},items:items.map(i=>({id:i.id.split(':')[0],variant_id:i.variantId,quantity:i.quantity}))}})});const d=await r.json();if(!r.ok)throw new Error(d.error||'Unable to start payment.');window.location.href=d.authorization_url}catch(err){setError(err instanceof Error?err.message:'Unable to start payment.');setLoading(false)}}if(!items.length)return <main><section className="section"><div className="container empty"><h1>Your cart is empty</h1><Link className="btn btn-primary" href="/shop">Shop now</Link></div></section></main>;return <main><header className="nav"><div className="container nav-inner"><Link className="brand" href="/"><img src="/folus-emporium-circular-logo.png" alt="Folus Emporium"/><span>FOLUS<br/>EMPORIUM<small>Curating Excellence for Life’s Finest Moments.</small></span></Link></div></header><section className="section"><div className="container cart-layout"><form className="cart-summary" onSubmit={handleSubmit} style={{position:'static'}}><div className="eyebrow">Secure checkout</div><h1>Delivery & payment details</h1><label>Full name<input required name="name"/></label><label>Email address<input required type="email" name="email"/></label><label>Phone number<input required type="tel" name="phone"/></label><label>Delivery address<textarea required name="address" rows={4}/></label><label>City<input required name="city"/></label><label>State<input required name="state"/></label>{error&&<p role="alert" style={{color:'var(--burgundy)'}}>{error}</p>}<button className="btn btn-primary checkout-btn" disabled={loading}>{loading?'Connecting to Paystack…':'Pay securely with Paystack'}</button></form><aside className="cart-summary" style={{position:'static'}}><div className="eyebrow">Your order</div><h2>Order summary</h2>{items.map(i=><div className="summary-row" key={i.id}><span>{i.name}{i.sizeLabel?` · ${i.sizeLabel}`:''} × {i.quantity}</span><strong>₦{(i.price*i.quantity).toLocaleString('en-NG')}</strong></div>)}<div style={{borderTop:'1px solid var(--line)',paddingTop:16,marginTop:16}}><label>Discount / coupon code<div style={{display:'flex',gap:8}}><input value={coupon} onChange={e=>{setCoupon(e.target.value.toUpperCase());setDiscount(0);setCouponMsg('')}} placeholder="Enter code"/><button type="button" className="btn btn-outline" onClick={applyCoupon}>Apply</button></div></label>{couponMsg&&<p className="muted">{couponMsg}</p>}</div><div className="summary-row"><span>Subtotal</span><strong>₦{subtotal.toLocaleString('en-NG')}</strong></div>{discount>0&&<div className="summary-row"><span>Discount</span><strong>-₦{discount.toLocaleString('en-NG')}</strong></div>}<div className="summary-row"><span>Delivery</span><strong>₦0</strong></div><div className="summary-row"><span>Total</span><strong>₦{Math.max(0,subtotal-discount).toLocaleString('en-NG')}</strong></div></aside></div></section></main>}
