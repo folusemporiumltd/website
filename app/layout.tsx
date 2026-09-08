@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import { CartProvider } from '@/components/cart-provider'
+import { WishlistProvider } from '@/components/wishlist-provider'
 
 export const metadata: Metadata = {
   title: 'Folus Emporium | Curating Excellence for Life’s Finest Moments',
@@ -15,7 +16,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body><CartProvider>{children}</CartProvider></body>
+      <body><CartProvider><WishlistProvider>{children}</WishlistProvider></CartProvider></body>
     </html>
   )
 }
