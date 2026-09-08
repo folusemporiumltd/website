@@ -40,6 +40,10 @@ export async function updateSession(request: NextRequest) {
     pathname === '/shop' ||
     pathname.startsWith('/shop/') ||
     pathname === '/cart' ||
+    pathname === '/faq' ||
+    pathname === '/shipping-policy' ||
+    pathname === '/return-policy' ||
+    pathname === '/contact' ||
     pathname.startsWith('/payment/callback') ||
     pathname === '/api/paystack/webhook'
 
