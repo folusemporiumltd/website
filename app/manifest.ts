@@ -6,7 +6,8 @@ export default function manifest(): MetadataRoute.Manifest {
     short_name: 'Folus Emporium',
     description: 'Quality foods, pantry essentials, and thoughtfully curated products from Folus Emporium.',
     icons: [
-      { src: '/icon.png', sizes: 'any', type: 'image/png', purpose: 'any maskable' },
+      { src: '/icon.png', sizes: 'any', type: 'image/png', purpose: 'any' },
+      { src: '/icon.png', sizes: 'any', type: 'image/png', purpose: 'maskable' },
     ],
   }
 }
