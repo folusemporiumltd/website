@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import './dashboard.css'
 
 async function requireAdmin() {
   const supabase = await createClient()
