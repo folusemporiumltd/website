@@ -11,7 +11,11 @@ export async function requestPasswordReset(formData: FormData) {
 
   const supabase = await createClient()
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${PUBLIC_SITE_URL}/auth/callback?next=${encodeURIComponent('/reset-password?mode=update')}`,
+    // Recovery links must land on the reset page itself. It can establish a
+    // session from either a PKCE code or an implicit-flow URL fragment. Going
+    // through the email-confirmation callback loses the fragment and caused
+    // valid recovery links to be reported as failed confirmations.
+    redirectTo: `${PUBLIC_SITE_URL}/reset-password?mode=update`,
   })
 
   if (error) {
