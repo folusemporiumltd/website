@@ -1,0 +1,4 @@
+import type { MetadataRoute } from 'next'
+import { createCatalogueClient } from '@/lib/supabase/server'
+const base='https://website-smoky-kappa-22.vercel.app'
+export default async function sitemap():Promise<MetadataRoute.Sitemap>{const supabase=await createCatalogueClient();const {data}=await supabase.from('products').select('slug,updated_at').eq('is_active',true);const pages=['','/shop','/about','/blog','/careers','/contact','/faq','/shipping-policy','/return-policy'];return [...pages.map(p=>({url:`${base}${p}`,lastModified:new Date(),changeFrequency:p==='/shop'?'daily' as const:'weekly' as const,priority:p===''?1:p==='/shop'?.9:.7})),...(data??[]).map(p=>({url:`${base}/shop/${p.slug}`,lastModified:p.updated_at?new Date(p.updated_at):new Date(),changeFrequency:'weekly' as const,priority:.8}))]}
