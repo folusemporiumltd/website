@@ -16,6 +16,9 @@ export default async function AccountPage() {
     .eq('id', user.id)
     .maybeSingle()
 
+  // Admin accounts should land on the management dashboard rather than the customer account page.
+  if (profile?.role === 'admin') redirect('/admin')
+
   const metadata = user.user_metadata ?? {}
   const fullName = profile?.full_name || metadata.full_name || 'Customer'
   const phone = profile?.phone || metadata.phone || 'Not provided'
