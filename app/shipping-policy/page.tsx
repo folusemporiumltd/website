@@ -1,0 +1,5 @@
+import Link from 'next/link'
+
+export default function ShippingPolicyPage() {
+  return <main className="support-page"><section className="section"><div className="container"><div className="eyebrow">Customer Service</div><h1>Shipping policy</h1><p>Folus Emporium delivers carefully packaged products to homes and businesses across Nigeria.</p><h2>Order processing</h2><p>Orders are prepared after payment has been confirmed. We may contact you to confirm delivery details, availability, or a suitable delivery time.</p><h2>Delivery</h2><p>Delivery options, coverage and applicable charges are shown or confirmed during checkout. Delivery times can vary by location, courier availability, weather and other operational factors.</p><h2>Receiving your order</h2><p>Please ensure your delivery address and phone number are accurate and that someone is available to receive the order. Inspect your package on arrival and report any problem promptly.</p><h2>Need help?</h2><p>For a delivery question, please <Link href="/contact">contact us</Link> with your order reference.</p></div></section></main>
+}
