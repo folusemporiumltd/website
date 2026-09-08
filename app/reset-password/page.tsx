@@ -3,7 +3,6 @@
 import Link from 'next/link'
 import { FormEvent, useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { requestPasswordReset } from './actions'
 
 type Screen = 'request' | 'preparing' | 'update' | 'invalid'
 
@@ -12,6 +11,7 @@ export default function ResetPasswordPage() {
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
   const [saving, setSaving] = useState(false)
+  const [sending, setSending] = useState(false)
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -90,6 +90,31 @@ export default function ResetPasswordPage() {
     window.location.assign('/admin')
   }
 
+  async function handlePasswordResetRequest(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const email = String(new FormData(event.currentTarget).get('email') ?? '').trim()
+    if (!email) {
+      setError('Enter your email address.')
+      return
+    }
+
+    setError('')
+    setMessage('')
+    setSending(true)
+    const supabase = createClient()
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password?mode=update`,
+    })
+    setSending(false)
+
+    if (resetError) {
+      setError('We could not send the password email. Please wait a minute and try again.')
+      return
+    }
+
+    setMessage('If that email has an account, a secure password link has been sent.')
+  }
+
   const isUpdate = screen === 'preparing' || screen === 'update'
 
   return (
@@ -123,10 +148,10 @@ export default function ResetPasswordPage() {
           )}
 
           {(screen === 'request' || screen === 'invalid') && (
-            <form>
+            <form onSubmit={handlePasswordResetRequest}>
               <label htmlFor="email">Email</label>
               <input id="email" name="email" type="email" autoComplete="email" placeholder="you@example.com" required />
-              <button className="btn btn-primary auth-action-btn" formAction={requestPasswordReset}>Send password link</button>
+              <button className="btn btn-primary auth-action-btn" type="submit" disabled={sending}>{sending ? 'Sending…' : 'Send password link'}</button>
             </form>
           )}
 
