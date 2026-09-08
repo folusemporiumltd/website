@@ -17,6 +17,13 @@ function Icon({ name }: { name: string }) {
   return <svg viewBox="0 0 24 24" {...common}><path d="M4 7h16l-1 12H5L4 7Z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>
 }
 
+function SocialIcon({ name }: { name: string }) {
+  if (name === 'facebook') return <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M13.6 21v-8h2.7l.4-3.1h-3.1V8c0-.9.3-1.5 1.6-1.5h1.7V3.7c-.3 0-1.3-.1-2.4-.1-2.4 0-4 1.5-4 4.1v2.2H7.8V13h2.7v8h3.1Z"/></svg>
+  if (name === 'instagram') return <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="5" fill="none" stroke="currentColor" strokeWidth="2"/><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" strokeWidth="2"/><circle cx="17.4" cy="6.8" r="1.1" fill="currentColor"/></svg>
+  if (name === 'tiktok') return <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M15.4 3c.3 2.1 1.5 3.5 3.6 3.8v3c-1.3 0-2.5-.4-3.6-1.1v6.7a5.1 5.1 0 1 1-4.3-5v3.1a2.1 2.1 0 1 0 1.2 1.9V3h3.1Z"/></svg>
+  return <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M20 11.6A8 8 0 0 1 8.2 18.7L4 20l1.3-4.1A8 8 0 1 1 20 11.6Z"/><path fill="currentColor" d="M9.2 7.5c-.2-.4-.5-.4-.7-.4h-.6c-.2 0-.6.1-.8.5-.3.4-1 1-.7 2.5.2 1.5 1.5 2.9 2.8 3.9 1.3.9 2.4 1.2 2.8 1.2.3 0 1.1-.5 1.3-1 .2-.4.2-.9.1-1-.1-.1-.3-.2-.7-.4l-1.1-.5c-.2-.1-.4-.1-.6.1l-.4.5c-.1.2-.3.2-.5.1-.2-.1-.8-.3-1.5-1-.5-.5-.9-1.2-1-1.4-.1-.2 0-.4.1-.5l.3-.4c.1-.1.1-.3.2-.4.1-.2 0-.3 0-.4l-.5-1.2Z"/></svg>
+}
+
 export function TrustIcon({ name }: { name: string }) {
   const common = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
   if (name === 'leaf') return <svg viewBox="0 0 24 24" {...common}><path d="M20.5 3.5C12 3.8 6.2 6.1 4.1 11.1c-1.2 2.9.1 6.2 3 7.1 3.3 1 6.4-.8 7.6-3.8C16.2 10.9 15 8.5 20.5 3.5Z"/><path d="M4.5 20.5c2.4-4.2 5.4-7 9.6-9.6"/></svg>
@@ -36,9 +43,9 @@ export function StorefrontHeader({ config, categories }: { config: Config; categ
     if (category) params.set('category', category)
     window.location.assign('/shop' + (params.size ? '?' + params.toString() : ''))
   }
-  const social = Object.entries(config.social ?? {}).filter(([, url]) => Boolean(url))
+  const social = ['facebook', 'tiktok', 'whatsapp', 'instagram'].map(name => [name, config.social?.[name] ?? ''] as const).filter(([, url]) => Boolean(url))
   return <header className="storefront-header">
-    <div className="utility-bar"><div className="container utility-inner"><span>{config.announcement}</span><div className="utility-right">{(config.utilityLinks ?? []).map(([label, href]) => <Link href={href} key={label}>{label}</Link>)}{social.map(([name, url]) => <a className="social-link" href={url} target="_blank" rel="noreferrer" key={name} aria-label={name}>{name.slice(0,1).toUpperCase()}</a>)}</div></div></div>
+    <div className="utility-bar"><div className="container utility-inner"><span>{config.announcement}</span><div className="utility-right">{(config.utilityLinks ?? []).map(([label, href]) => <Link href={href} key={label}>{label}</Link>)}{social.map(([name, url]) => <a className="social-link" href={url} target="_blank" rel="noreferrer" key={name} aria-label={name}><SocialIcon name={name}/></a>)}</div></div></div>
     <div className="header-main"><div className="container header-main-inner">
       <Link className="luxury-brand" href="/"><img src="/folus-emporium-circular-logo.png" alt="Folus Emporium logo"/><span><b>FOLUS<br/>EMPORIUM</b><small>Nature’s Goodness, Purely Yours</small></span></Link>
       <form className="catalogue-search" onSubmit={search}><select aria-label="Product category" value={category} onChange={e => setCategory(e.target.value)}><option value="">All Categories</option>{categories.map(item => <option value={item.slug} key={item.slug}>{item.name}</option>)}</select><input aria-label="Search products" placeholder="Search products..." value={query} onChange={e => setQuery(e.target.value)}/><button aria-label="Search products" type="submit"><Icon name="search"/></button></form>
