@@ -1,0 +1,5 @@
+import Link from 'next/link'
+
+export default function ReturnPolicyPage() {
+  return <main className="support-page"><section className="section"><div className="container"><div className="eyebrow">Customer Service</div><h1>Return policy</h1><p>We want every Folus Emporium order to arrive in good condition and as expected.</p><h2>When to contact us</h2><p>Contact us within 48 hours of delivery if an item is damaged, incorrect, missing, or has a quality concern. Please include your order reference and clear photographs where appropriate.</p><h2>Eligible returns</h2><p>To protect food quality and safety, products should remain unopened, unused and in their original packaging. Perishable or opened food products are generally not eligible for return unless there was an error or quality issue with the order.</p><h2>Resolution</h2><p>After review, we may arrange a replacement, store credit, refund, or another appropriate solution. Any approved return instructions will be shared directly with you.</p><h2>Start a request</h2><p><Link href="/contact">Contact our team</Link> as soon as possible and we will help.</p></div></section></main>
+}
