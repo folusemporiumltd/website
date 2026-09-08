@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { createClient } from '@/lib/supabase/server'
 
 type CheckoutItem = { id: string; variant_id?: string; quantity: number }
 type Product = {
@@ -22,27 +21,28 @@ type ProductVariant = {
 
 export async function POST(request: Request) {
   try {
-    const authClient = await createClient()
-    const { data: claimsData } = await authClient.auth.getClaims()
-    const userEmail = typeof claimsData?.claims?.email === 'string' ? claimsData.claims.email : ''
-    if (!userEmail) return NextResponse.json({ error: 'Please sign in or create an account before payment.' }, { status: 401 })
-
     const { email, reference, callback_url, metadata } = await request.json()
     const checkoutEmail = String(email || '').trim()
     const items: CheckoutItem[] = Array.isArray(metadata?.items) ? metadata.items : []
     const delivery = metadata?.delivery_address || {}
 
-    if (!checkoutEmail || checkoutEmail.toLowerCase() !== userEmail.toLowerCase()) return NextResponse.json({ error: 'The checkout email must match your signed-in account.' }, { status: 403 })
+    if (!checkoutEmail) return NextResponse.json({ error: 'A valid checkout email is required.' }, { status: 400 })
     if (!reference || !callback_url || !items.length) return NextResponse.json({ error: 'Missing required payment details.' }, { status: 400 })
     const secretKey = process.env.PAYSTACK_SECRET_KEY
     if (!secretKey) return NextResponse.json({ error: 'Paystack is not configured on the server.' }, { status: 500 })
 
     const supabase = createAdminClient()
-    const normalized = items.map((item: CheckoutItem) => ({
-      id: String(item.id || ''),
-      variant_id: item.variant_id ? String(item.variant_id) : undefined,
-      quantity: Math.max(1, Math.min(Math.floor(Number(item.quantity) || 1), 100)),
-    })).filter(item => item.id)
+    const itemMap = new Map<string, CheckoutItem>()
+    for (const rawItem of items) {
+      const id = String(rawItem.id || '')
+      const variant_id = rawItem.variant_id ? String(rawItem.variant_id) : undefined
+      if (!id) continue
+      const quantity = Math.max(1, Math.min(Math.floor(Number(rawItem.quantity) || 1), 100))
+      const key = `${id}:${variant_id || ''}`
+      const existing = itemMap.get(key)
+      itemMap.set(key, { id, variant_id, quantity: Math.min(100, (existing?.quantity || 0) + quantity) })
+    }
+    const normalized = [...itemMap.values()]
 
     const productIds = normalized.map(item => item.id)
     const variantIds = normalized.map(item => item.variant_id).filter(Boolean) as string[]
