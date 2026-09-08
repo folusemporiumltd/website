@@ -18,21 +18,37 @@ begin
   if v_payment_status = 'paid' then return v_order_id; end if;
   if round(v_total * 100) <> p_amount_kobo then raise exception 'Payment amount does not match order total'; end if;
 
+  -- Lock and validate each variant once, using its total ordered quantity.
   for v_item in
-    select a.variant_id, a.product_id, a.quantity, pv.stock_quantity as variant_stock,
-           p.stock_quantity as product_stock, p.name as product_name
+    select a.variant_id, a.quantity, pv.stock_quantity, p.name as product_name
     from (
-      select variant_id, product_id, sum(quantity)::integer as quantity
-      from public.order_items where order_id = v_order_id
-      group by variant_id, product_id
+      select variant_id, sum(quantity)::integer as quantity
+      from public.order_items
+      where order_id = v_order_id and variant_id is not null
+      group by variant_id
     ) a
-    left join public.product_variants pv on pv.id = a.variant_id
-    join public.products p on p.id = a.product_id
+    join public.product_variants pv on pv.id = a.variant_id
+    join public.products p on p.id = pv.product_id
     for update of pv, p
   loop
-    if v_item.variant_id is not null then
-      if v_item.variant_stock < v_item.quantity then raise exception 'Insufficient stock for %', v_item.product_name; end if;
-    elsif v_item.product_stock < v_item.quantity then
+    if v_item.stock_quantity < v_item.quantity then
+      raise exception 'Insufficient stock for %', v_item.product_name;
+    end if;
+  end loop;
+
+  -- Lock and validate each non-variant product once.
+  for v_item in
+    select a.product_id, a.quantity, p.stock_quantity, p.name as product_name
+    from (
+      select product_id, sum(quantity)::integer as quantity
+      from public.order_items
+      where order_id = v_order_id and variant_id is null
+      group by product_id
+    ) a
+    join public.products p on p.id = a.product_id
+    for update of p
+  loop
+    if v_item.stock_quantity < v_item.quantity then
       raise exception 'Insufficient stock for %', v_item.product_name;
     end if;
   end loop;
