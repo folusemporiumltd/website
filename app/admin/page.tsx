@@ -5,10 +5,12 @@ import AdminProductImageUploader from '@/components/admin-product-image-uploader
 
 async function requireAdmin() {
   const supabase = await createClient()
-  const { data: claimsData } = await supabase.auth.getClaims()
-  const userId = claimsData?.claims?.sub
-  if (!userId) redirect('/login?next=/admin')
-  const { data: profile } = await supabase.from('profiles').select('full_name,role').eq('id', userId).single()
+  // Match the verified user lookup used by the account and dashboard routes.
+  // This prevents a valid refreshed SSR session from being mistaken for a non-admin session.
+  const { data: authData } = await supabase.auth.getUser()
+  const userId = authData.user?.id
+  if (!userId) redirect('/login?next=/admin&mode=signin')
+  const { data: profile } = await supabase.from('profiles').select('full_name,role').eq('id', userId).maybeSingle()
   if (profile?.role !== 'admin') redirect('/account')
   return { supabase, profile }
 }
