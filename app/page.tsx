@@ -1,9 +1,12 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createCatalogueClient } from '@/lib/supabase/server'
 import ProductCardActions from '@/components/product-card-actions'
 import { StorefrontHeader } from '@/components/storefront-ui'
 import FeaturedProductCarousel from '@/components/featured-product-carousel'
+
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 const categories = [
   ['🌾', 'Flours', 'flours', 'Plantain Flour and Poundo Yam Flour for convenient everyday meals.'],
@@ -34,26 +37,26 @@ function ContactIcon({ type }: { type: 'email' | 'phone' | 'whatsapp' | 'address
   if (type === 'email') return <svg viewBox="0 0 24 24" {...common}><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m4 7 8 6 8-6"/></svg>
   if (type === 'phone') return <svg viewBox="0 0 24 24" {...common}><path d="M6.8 3.8 9.3 7l-1.6 2.1c1.2 2.5 2.9 4.2 5.4 5.4l2.1-1.6 3.2 2.5-1.5 3.1c-.4.8-1.3 1.2-2.2 1-6.5-1.6-11.8-6.9-13.4-13.4-.2-.9.2-1.8 1-2.2l3.1-1.5Z"/></svg>
   if (type === 'whatsapp') return <svg viewBox="0 0 24 24" {...common}><path d="M20 11.6A8 8 0 0 1 8.2 18.7L4 20l1.3-4.1A8 8 0 1 1 20 11.6Z"/><path d="M9.2 8.2c.5 2.9 2.2 4.6 5.1 5.1"/></svg>
-  return <svg viewBox="0 0 24 24" {...common}><path d="M20 10c0 5.2-8 10.5-8 10.5S4 15.2 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.4"/></svg>
+  return <svg viewBox="0 0 24 24" aria-hidden="true" {...common}><path d="M20 10c0 5.2-8 10.5-8 10.5S4 15.2 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.4"/></svg>
 }
 
 const storefrontFallback = {
   announcement: 'Serving homes & businesses across Nigeria.',
-  utilityLinks: [['Track Order','/account'],['FAQ','#faq'],['Contact Us','/contact']] as [string,string][],
+  utilityLinks: [['Track Order','/account'],['FAQ','/faq'],['Contact Us','/contact']] as [string,string][],
   social: { facebook: 'https://www.facebook.com/folusemporiumltd', tiktok: 'https://www.tiktok.com/@folusemporium25', whatsapp: 'https://wa.me/2349168157255', instagram: '' },
-  navigation: [['Home','/'],['Shop','/shop'],['Categories','/shop'],['About Us','/about'],['Blog','/blog'],['Contact Us','/contact']] as [string,string][]
+  navigation: [['Home','/'],['Shop','/shop'],['Categories','/shop'],['About Us','/about'],['Our Story','/about#story'],['Blog','/blog'],['Careers','/careers'],['Contact Us','/contact']] as [string,string][]
 }
 
 export default async function Home({ searchParams }: { searchParams: Promise<{ code?: string }> }) {
   const params = await searchParams
-  const supabase = await createClient()
-
   if (params.code) {
-    const { error } = await supabase.auth.exchangeCodeForSession(params.code)
+    const authClient = await createClient()
+    const { error } = await authClient.auth.exchangeCodeForSession(params.code)
     if (!error) redirect('/login?message=Email%20confirmed%20successfully.%20Please%20sign%20in%20to%20continue.&next=%2Fcheckout&mode=signin')
     redirect('/login?error=We%20could%20not%20confirm%20your%20email.%20Please%20request%20a%20new%20confirmation%20email.&next=%2Fcheckout&mode=signin')
   }
 
+  const supabase = await createCatalogueClient()
   const [{ data: products }, { data: storefrontContent }, { data: headerCategories }] = await Promise.all([
     supabase.from('products').select('id,name,slug,description,price,image_url,featured,stock_quantity').eq('is_active', true).order('featured', { ascending: false }).order('created_at', { ascending: false }),
     supabase.from('storefront_content').select('config').eq('id', true).maybeSingle(),
