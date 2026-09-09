@@ -40,6 +40,7 @@ export async function updateSession(request: NextRequest) {
     pathname === '/shop' ||
     pathname.startsWith('/shop/') ||
     pathname === '/cart' ||
+    pathname === '/wishlist' ||
     pathname === '/about' ||
     pathname.startsWith('/about/') ||
     pathname === '/blog' ||
@@ -50,6 +51,7 @@ export async function updateSession(request: NextRequest) {
     pathname === '/shipping-policy' ||
     pathname === '/return-policy' ||
     pathname === '/contact' ||
+    pathname.startsWith('/p/') ||
     pathname.startsWith('/payment/callback') ||
     pathname === '/api/paystack/webhook'
 
