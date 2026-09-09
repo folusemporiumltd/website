@@ -4,12 +4,10 @@ import { createClient } from '@/lib/supabase/server'
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const supabase = await createClient()
-  const { data: claimsData } = await supabase.auth.getClaims()
-  const userId = claimsData?.claims?.sub
-  if (!userId) return NextResponse.json({ error: 'You must be signed in as an administrator.' }, { status: 401 })
-
-  const { data: profile } = await supabase.from('profiles').select('role').eq('id', userId).single()
-  if (profile?.role !== 'admin') return NextResponse.json({ error: 'Administrator access required.' }, { status: 403 })
+  const { data: authData } = await supabase.auth.getUser()
+  if (!authData.user) return NextResponse.json({ error: 'You must be signed in as an administrator.' }, { status: 401 })
+  const { data: isAdmin, error: adminError } = await supabase.rpc('get_my_admin_status')
+  if (adminError || isAdmin !== true) return NextResponse.json({ error: 'Administrator access required.' }, { status: 403 })
 
   const { id } = await params
   const formData = await request.formData()
@@ -30,6 +28,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   revalidatePath('/')
   revalidatePath('/shop')
   revalidatePath('/admin')
+  revalidatePath('/admin/products')
+  revalidatePath('/admin/dashboard')
   if (product?.slug) revalidatePath(`/shop/${product.slug}`)
   return NextResponse.json({ url: publicData.publicUrl })
 }
