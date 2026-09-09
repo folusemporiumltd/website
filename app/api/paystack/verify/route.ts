@@ -11,6 +11,7 @@ export async function GET(request: Request) {
     const response = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`, { headers: { Authorization: `Bearer ${secretKey}` }, cache: 'no-store' })
     const data = await response.json()
     if (!response.ok || !data.status || data.data?.status !== 'success') return NextResponse.json({ paid: false, message: data.message || 'Payment was not successful.' }, { status: 400 })
+    if (String(data.data?.currency || '') !== 'NGN') return NextResponse.json({ paid: false, message: 'Unexpected payment currency.' }, { status: 400 })
 
     const supabase = createAdminClient()
     const { data: orderId, error } = await supabase.rpc('mark_order_paid', { p_payment_reference: reference, p_amount_kobo: Number(data.data.amount) })
