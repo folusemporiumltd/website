@@ -25,10 +25,9 @@ export default function ProductCardActions({ product, variant }: { product: Prod
       sizeLabel: variant.size_label,
     })
     setAdded(true)
-    window.setTimeout(() => setAdded(false), 1600)
   }
 
   const unavailable = !variant || variant.stock_quantity <= 0 || variant.price <= 0
 
-  return <div className="product-actions"><WishlistButton product={product} variant={variant}/><Link className="btn btn-outline" href={`/shop/${product.slug}`}>View product</Link><button className="btn btn-primary" onClick={handleAdd} disabled={unavailable}>{unavailable ? 'Out of stock' : added ? '✓ Added' : `Add ${variant.size_label}`}</button></div>
+  return <div className="product-actions"><WishlistButton product={product} variant={variant}/><Link className="btn btn-outline" href={`/shop/${product.slug}`}>View product</Link>{added?<Link className="btn btn-primary" href="/checkout">Proceed to checkout</Link>:<button className="btn btn-primary" onClick={handleAdd} disabled={unavailable}>{unavailable ? 'Out of stock' : `Add ${variant?.size_label ?? ''}`}</button>}</div>
 }
