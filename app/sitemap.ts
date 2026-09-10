@@ -6,7 +6,7 @@ const base = process.env.NEXT_PUBLIC_SITE_URL || 'https://website-smoky-kappa-22
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const supabase = await createCatalogueClient()
   const { data } = await supabase.from('products').select('slug,updated_at').eq('is_active', true)
-  const pages = ['', '/shop', '/about', '/blog', '/careers', '/contact', '/faq', '/shipping-policy', '/return-policy']
+  const pages = ['', '/shop', '/about', '/blog', '/careers', '/contact', '/faq', '/shipping-policy', '/return-policy', '/privacy-policy', '/terms-and-conditions']
 
   return [
     ...pages.map((path) => ({
