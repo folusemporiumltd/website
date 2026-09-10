@@ -50,6 +50,8 @@ export async function updateSession(request: NextRequest) {
     pathname === '/faq' ||
     pathname === '/shipping-policy' ||
     pathname === '/return-policy' ||
+    pathname === '/privacy-policy' ||
+    pathname === '/terms-and-conditions' ||
     pathname === '/contact' ||
     pathname.startsWith('/p/') ||
     pathname.startsWith('/payment/callback') ||
