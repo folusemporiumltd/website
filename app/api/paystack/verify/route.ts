@@ -15,8 +15,15 @@ export async function GET(request: Request) {
     if (!response.ok || !data.status || data.data?.status !== 'success') return NextResponse.json({ paid: false, message: data.message || 'Payment was not successful.' }, { status: 400 })
     if (String(data.data?.currency || '') !== 'NGN') return NextResponse.json({ paid: false, message: 'Unexpected payment currency.' }, { status: 400 })
 
+    const paidAmountKobo = Number(data.data?.amount)
+    const requestedAmountKobo = Number(data.data?.requested_amount)
+    const amountToVerify = Number.isFinite(requestedAmountKobo) && requestedAmountKobo > 0 ? requestedAmountKobo : paidAmountKobo
+    if (!Number.isFinite(paidAmountKobo) || paidAmountKobo < amountToVerify) {
+      return NextResponse.json({ paid: false, message: 'Invalid payment amount returned by Paystack.' }, { status: 400 })
+    }
+
     const supabase = createAdminClient()
-    const { data: orderId, error } = await supabase.rpc('mark_order_paid', { p_payment_reference: reference, p_amount_kobo: Number(data.data.amount) })
+    const { data: orderId, error } = await supabase.rpc('mark_order_paid', { p_payment_reference: reference, p_amount_kobo: amountToVerify })
     if (error || !orderId) return NextResponse.json({ error: error?.message || 'Payment succeeded, but we could not confirm the order. Please contact Folus Emporium with your payment reference.' }, { status: 500 })
     return NextResponse.json({ paid: true, order_id: orderId, reference })
   } catch (error) {
