@@ -35,10 +35,7 @@ export default function ResetPasswordPage() {
       let recoveryError: Error | null = null
 
       if (accessToken && refreshToken) {
-        const { error } = await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken,
-        })
+        const { error } = await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
         recoveryError = error
       } else if (code) {
         const { error } = await supabase.auth.exchangeCodeForSession(code)
@@ -68,14 +65,8 @@ export default function ResetPasswordPage() {
     const confirmPassword = String(form.get('confirm_password') ?? '')
 
     setError('')
-    if (password.length < 8) {
-      setError('Choose a password with at least 8 characters.')
-      return
-    }
-    if (password !== confirmPassword) {
-      setError('The passwords do not match.')
-      return
-    }
+    if (password.length < 8) { setError('Choose a password with at least 8 characters.'); return }
+    if (password !== confirmPassword) { setError('The passwords do not match.'); return }
 
     setSaving(true)
     const supabase = createClient()
@@ -87,16 +78,13 @@ export default function ResetPasswordPage() {
       return
     }
 
-    window.location.assign('/admin')
+    window.location.assign('/account?password_updated=1')
   }
 
   async function handlePasswordResetRequest(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     const email = String(new FormData(event.currentTarget).get('email') ?? '').trim()
-    if (!email) {
-      setError('Enter your email address.')
-      return
-    }
+    if (!email) { setError('Enter your email address.'); return }
 
     setError('')
     setMessage('')
@@ -132,7 +120,6 @@ export default function ResetPasswordPage() {
 
           {error && <p role="alert" style={{ color: 'var(--burgundy)' }}>{error}</p>}
           {message && <p role="status">{message}</p>}
-
           {screen === 'preparing' && <p role="status">Verifying your password-reset link…</p>}
 
           {screen === 'update' && (
@@ -141,9 +128,7 @@ export default function ResetPasswordPage() {
               <input id="password" name="password" type="password" autoComplete="new-password" minLength={8} required />
               <label htmlFor="confirm_password">Confirm new password</label>
               <input id="confirm_password" name="confirm_password" type="password" autoComplete="new-password" minLength={8} required />
-              <button className="btn btn-primary auth-action-btn" type="submit" disabled={saving}>
-                {saving ? 'Saving…' : 'Save new password'}
-              </button>
+              <button className="btn btn-primary auth-action-btn" type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save new password'}</button>
             </form>
           )}
 
