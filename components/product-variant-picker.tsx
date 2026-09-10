@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { useCart } from './cart-provider'
 
 type Variant = { id: string; size_grams: number; size_label: string; price: number; stock_quantity: number }
@@ -26,14 +27,13 @@ export default function ProductVariantPicker({ product, variants }: { product: P
       sizeLabel: selected.size_label,
     }, quantity)
     setAdded(true)
-    window.setTimeout(() => setAdded(false), 1800)
   }
 
   if (!variants.length) return null
 
   return <div className="variant-picker">
-    <label><span style={{fontWeight:700}}>Choose size</span><select value={selectedId} onChange={e => setSelectedId(e.target.value)}>{variants.map(v => <option key={v.id} value={v.id} disabled={v.stock_quantity <= 0}>{v.size_label}{v.stock_quantity <= 0 ? ' · Out of stock' : ''} — ₦{Number(v.price).toLocaleString('en-NG')}</option>)}</select></label>
-    <label><span style={{fontWeight:700}}>Quantity</span><input type="number" min={1} max={Math.max(1, Math.min(selected?.stock_quantity ?? 1, 100))} value={quantity} onChange={e => setQuantity(Math.max(1, Math.min(Number(e.target.value) || 1, 100)))} /></label>
-    <button className="btn btn-primary" onClick={add} disabled={!selected || selected.stock_quantity < quantity}>{selected?.stock_quantity ? (added ? '✓ Added to cart' : 'Add to cart') : 'Out of stock'}</button>
+    <label><span style={{fontWeight:700}}>Choose size</span><select value={selectedId} onChange={e => { setSelectedId(e.target.value); setAdded(false) }}>{variants.map(v => <option key={v.id} value={v.id} disabled={v.stock_quantity <= 0}>{v.size_label}{v.stock_quantity <= 0 ? ' · Out of stock' : ''} — ₦{Number(v.price).toLocaleString('en-NG')}</option>)}</select></label>
+    <label><span style={{fontWeight:700}}>Quantity</span><input type="number" min={1} max={Math.max(1, Math.min(selected?.stock_quantity ?? 1, 100))} value={quantity} onChange={e => { setQuantity(Math.max(1, Math.min(Number(e.target.value) || 1, 100))); setAdded(false) }} /></label>
+    {added?<Link className="btn btn-primary" href="/checkout">Proceed to checkout</Link>:<button className="btn btn-primary" onClick={add} disabled={!selected || selected.stock_quantity < quantity}>{selected?.stock_quantity ? 'Add to cart' : 'Out of stock'}</button>}
   </div>
 }
