@@ -2,7 +2,6 @@ import Link from 'next/link'
 import type { Metadata } from 'next'
 import { createCatalogueClient } from '@/lib/supabase/server'
 import { StorefrontHeader } from '@/components/storefront-ui'
-import './help.css'
 
 export const metadata:Metadata={title:'Help Desk',description:'Help and guidance for shopping, accounts, payments, delivery, order tracking, wishlist, coupons and support on Folus Emporium.'}
 
