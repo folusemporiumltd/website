@@ -45,6 +45,10 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
               <input id="email" name="email" type="email" autoComplete="email" required />
               <label htmlFor="password">Password</label>
               <input id="password" name="password" type="password" autoComplete="new-password" minLength={6} required />
+              <label htmlFor="newsletter_consent" style={{display:'flex',alignItems:'flex-start',gap:10,fontWeight:500,margin:'18px 0'}}>
+                <input id="newsletter_consent" name="newsletter_consent" type="checkbox" style={{width:18,height:18,marginTop:3,flex:'0 0 auto'}} />
+                <span>I would like to receive Folus Emporium offers, new product updates and newsletters by email. I can unsubscribe at any time.</span>
+              </label>
               <input type="hidden" name="next" value={next} />
               <button className="btn btn-primary auth-action-btn" formAction={signup}>Create account</button>
             </form>
