@@ -46,6 +46,7 @@ async function sendTestNewsletter(formData:FormData){
       to:[user.email],
       subject:`[TEST] ${subject}`,
       html:emailBody(body,`${SITE_URL}/newsletter`),
+      tags:[{name:'type',value:'newsletter_test'}],
     }),
     cache:'no-store',
   })
@@ -88,7 +89,14 @@ async function sendNewsletter(formData:FormData){
   for(let i=0;i<subscribers.length;i+=100){
     const batch=subscribers.slice(i,i+100).map((s:any)=>{
       const unsubscribeUrl=`${SITE_URL}/newsletter?unsubscribe=${encodeURIComponent(s.unsubscribe_token)}`
-      return {from,to:[s.email],subject,html:emailBody(body,unsubscribeUrl),headers:{'List-Unsubscribe':`<${unsubscribeUrl}>`}}
+      return {
+        from,
+        to:[s.email],
+        subject,
+        html:emailBody(body,unsubscribeUrl),
+        headers:{'List-Unsubscribe':`<${unsubscribeUrl}>`},
+        tags:[{name:'campaign_id',value:String(campaignId)},{name:'type',value:'newsletter'}],
+      }
     })
     const response=await fetch('https://api.resend.com/emails/batch',{method:'POST',headers:{Authorization:`Bearer ${apiKey}`,'Content-Type':'application/json','Idempotency-Key':`folus-newsletter-${campaignId}-${i/100}`},body:JSON.stringify(batch),cache:'no-store'})
     if(!response.ok) redirect('/admin/newsletter?error='+encodeURIComponent('The email provider rejected the campaign. Check your Resend domain and sender settings.'))
@@ -102,19 +110,37 @@ async function sendNewsletter(formData:FormData){
 export default async function NewsletterAdminPage({searchParams}:{searchParams:Promise<{message?:string,error?:string}>}){
   const params=await searchParams
   const {supabase,user}=await requireAdmin()
-  const [{data:subscribers},{data:campaigns}]=await Promise.all([supabase.rpc('list_admin_newsletter_subscribers'),supabase.rpc('list_admin_newsletter_campaigns')])
+  const [{data:subscribers},{data:campaigns},{data:eventSummary},{data:events}]=await Promise.all([
+    supabase.rpc('list_admin_newsletter_subscribers'),
+    supabase.rpc('list_admin_newsletter_campaigns'),
+    supabase.rpc('get_admin_newsletter_event_summary'),
+    supabase.rpc('get_admin_newsletter_events',{p_limit:25}),
+  ])
   const all=subscribers??[]
   const active=all.filter((s:any)=>s.status==='subscribed')
+  const counts=Object.fromEntries((eventSummary??[]).map((row:any)=>[row.event_type,Number(row.event_count)]))
+  const delivered=counts['email.delivered']??0
+  const opened=counts['email.opened']??0
+  const clicked=counts['email.clicked']??0
   const canSendCustomers=Boolean(process.env.RESEND_API_KEY && isVerifiedDomainSender(process.env.NEWSLETTER_FROM_EMAIL))
   const adminEmail=user.email || 'Admin email unavailable'
 
-  return <main><header className="nav"><div className="container nav-inner"><Link className="brand" href="/admin/dashboard"><img src="/folus-emporium-circular-logo.png" alt="Folus Emporium logo"/><span>FOLUS<br/>EMPORIUM<small>Admin Dashboard</small></span></Link><nav className="navlinks"><Link href="/admin/dashboard">Dashboard</Link><Link href="/admin/newsletter">Newsletter</Link><Link href="/account">Account</Link></nav></div></header><section className="section"><div className="container" style={{maxWidth:1050}}><AdminBreadcrumbs items={[{label:'Admin',href:'/admin/dashboard'},{label:'Newsletter'}]}/><div className="eyebrow">Email marketing</div><h1>Newsletter</h1><p className="muted">Manage opted-in customers and send Folus Emporium product news, offers and updates.</p>
+  return <main><header className="nav"><div className="container nav-inner"><Link className="brand" href="/admin/dashboard"><img src="/folus-emporium-circular-logo.png" alt="Folus Emporium logo"/><span>FOLUS<br/>EMPORIUM<small>Admin Dashboard</small></span></Link><nav className="navlinks"><Link href="/admin/dashboard">Dashboard</Link><Link href="/admin/newsletter">Newsletter</Link><Link href="/account">Account</Link></nav></div></header><section className="section"><div className="container" style={{maxWidth:1050}}><AdminBreadcrumbs items={[{label:'Admin',href:'/admin/dashboard'},{label:'Newsletter'}]}/><div className="eyebrow">Email marketing</div><h1>Newsletter</h1><p className="muted">Manage opted-in customers, export your list, and monitor email engagement.</p>
   {params.message?<p role="status" style={{background:'#edf8f0',padding:14,borderRadius:10,fontWeight:700}}>{params.message}</p>:null}{params.error?<p role="alert" style={{background:'#fff0f1',color:'var(--burgundy)',padding:14,borderRadius:10,fontWeight:700}}>{params.error}</p>:null}
-  <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:14,margin:'24px 0'}}><div className="cart-summary" style={{position:'static'}}><div className="eyebrow">Active</div><h2>{active.length}</h2><p className="muted">Subscribed customers</p></div><div className="cart-summary" style={{position:'static'}}><div className="eyebrow">Total records</div><h2>{all.length}</h2><p className="muted">Including unsubscribed</p></div><div className="cart-summary" style={{position:'static'}}><div className="eyebrow">Campaigns</div><h2>{campaigns?.length??0}</h2><p className="muted">Created newsletters</p></div></div>
+
+  <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(170px,1fr))',gap:14,margin:'24px 0'}}>
+    <div className="cart-summary" style={{position:'static'}}><div className="eyebrow">Active</div><h2>{active.length}</h2><p className="muted">Subscribed customers</p></div>
+    <div className="cart-summary" style={{position:'static'}}><div className="eyebrow">Delivered</div><h2>{delivered}</h2><p className="muted">Delivery events</p></div>
+    <div className="cart-summary" style={{position:'static'}}><div className="eyebrow">Opened</div><h2>{opened}</h2><p className="muted">Open events</p></div>
+    <div className="cart-summary" style={{position:'static'}}><div className="eyebrow">Clicked</div><h2>{clicked}</h2><p className="muted">Click events</p></div>
+  </div>
 
   <NewsletterComposer activeCount={active.length} canSendCustomers={canSendCustomers} adminEmail={adminEmail} sendNewsletter={sendNewsletter} sendTestNewsletter={sendTestNewsletter}/>
 
-  <section style={{marginTop:30}}><div className="eyebrow">Subscribers</div><h2>Email list</h2>{all.length?<div style={{overflowX:'auto'}}><table style={{width:'100%',borderCollapse:'collapse'}}><thead><tr><th style={{textAlign:'left',padding:10}}>Customer</th><th style={{textAlign:'left',padding:10}}>Email</th><th style={{textAlign:'left',padding:10}}>Status</th><th style={{textAlign:'left',padding:10}}>Source</th><th style={{textAlign:'left',padding:10}}>Consent date</th></tr></thead><tbody>{all.map((s:any)=><tr key={s.id} style={{borderTop:'1px solid var(--line)'}}><td style={{padding:10}}>{s.full_name||'Not provided'}</td><td style={{padding:10}}>{s.email}</td><td style={{padding:10,textTransform:'capitalize'}}>{s.status}</td><td style={{padding:10,textTransform:'capitalize'}}>{s.source}</td><td style={{padding:10}}>{new Date(s.consent_at).toLocaleDateString('en-NG')}</td></tr>)}</tbody></table></div>:<p className="muted">No subscribers yet. New customers can opt in when creating their account.</p>}</section>
+  <section style={{marginTop:30}}><div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap'}}><div><div className="eyebrow">Subscribers</div><h2 style={{marginBottom:0}}>Email list</h2></div><a className="btn btn-outline" href="/admin/newsletter/export">Export CSV</a></div>{all.length?<div style={{overflowX:'auto',marginTop:16}}><table style={{width:'100%',borderCollapse:'collapse'}}><thead><tr><th style={{textAlign:'left',padding:10}}>Customer</th><th style={{textAlign:'left',padding:10}}>Email</th><th style={{textAlign:'left',padding:10}}>Status</th><th style={{textAlign:'left',padding:10}}>Source</th><th style={{textAlign:'left',padding:10}}>Consent date</th></tr></thead><tbody>{all.map((s:any)=><tr key={s.id} style={{borderTop:'1px solid var(--line)'}}><td style={{padding:10}}>{s.full_name||'Not provided'}</td><td style={{padding:10}}>{s.email}</td><td style={{padding:10,textTransform:'capitalize'}}>{s.status}</td><td style={{padding:10,textTransform:'capitalize'}}>{s.source}</td><td style={{padding:10}}>{new Date(s.consent_at).toLocaleDateString('en-NG')}</td></tr>)}</tbody></table></div>:<p className="muted">No subscribers yet. Visitors can now subscribe from the website footer.</p>}</section>
+
+  <section style={{marginTop:34}}><div className="eyebrow">Engagement tracking</div><h2>Recent email activity</h2>{events?.length?<div style={{overflowX:'auto'}}><table style={{width:'100%',borderCollapse:'collapse'}}><thead><tr><th style={{textAlign:'left',padding:10}}>Event</th><th style={{textAlign:'left',padding:10}}>Recipient</th><th style={{textAlign:'left',padding:10}}>Subject</th><th style={{textAlign:'left',padding:10}}>Time</th></tr></thead><tbody>{events.map((event:any)=><tr key={event.id} style={{borderTop:'1px solid var(--line)'}}><td style={{padding:10}}>{String(event.event_type).replace('email.','')}</td><td style={{padding:10}}>{event.recipient_email||'—'}</td><td style={{padding:10}}>{event.subject||'—'}</td><td style={{padding:10}}>{new Date(event.event_at).toLocaleString('en-NG')}</td></tr>)}</tbody></table></div>:<p className="muted">No tracked delivery, open or click events yet. Tracking will populate after the Resend webhook is activated.</p>}</section>
+
   <section style={{marginTop:34}}><div className="eyebrow">Campaign history</div><h2>Previous newsletters</h2>{campaigns?.length?<div style={{display:'grid',gap:12}}>{campaigns.map((c:any)=><article key={c.id} style={{border:'1px solid var(--line)',borderRadius:14,padding:16,background:'#fff'}}><strong>{c.subject}</strong><p className="muted" style={{margin:'5px 0 0'}}>{c.status==='sent'?`Sent to ${c.sent_count} subscriber(s) · ${new Date(c.sent_at).toLocaleString('en-NG')}`:`Draft created ${new Date(c.created_at).toLocaleString('en-NG')}`}</p></article>)}</div>:<p className="muted">No campaigns have been created yet.</p>}</section>
  </div></section></main>
 }
