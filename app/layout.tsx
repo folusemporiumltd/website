@@ -9,6 +9,7 @@ import FloatingWhatsApp from '@/components/floating-whatsapp'
 import GoogleAnalytics from '@/components/google-analytics'
 import FooterNewsletterSignup from '@/components/footer-newsletter-signup'
 import StorefrontFooter from '@/components/storefront-footer'
+import AdminFormLoading from '@/components/admin-form-loading'
 
 const site='https://website-smoky-kappa-22.vercel.app'
 const seoTitle="Folus Emporium | Nature's Goodness, Purely Yours"
@@ -26,4 +27,4 @@ export const metadata:Metadata={
   icons:{icon:[{url:'/icon.png',type:'image/png'}],shortcut:[{url:'/icon.png',type:'image/png'}],apple:[{url:'/apple-icon.png',type:'image/png'}]}
 }
 
-export default function RootLayout({children}:Readonly<{children:React.ReactNode}>){return <html lang="en-NG"><body><CartProvider><WishlistProvider>{children}<FooterNewsletterSignup/><StorefrontFooter/><FloatingWhatsApp/></WishlistProvider></CartProvider><GoogleAnalytics/></body></html>}
+export default function RootLayout({children}:Readonly<{children:React.ReactNode}>){return <html lang="en-NG"><body><CartProvider><WishlistProvider>{children}<FooterNewsletterSignup/><StorefrontFooter/><FloatingWhatsApp/><AdminFormLoading/></WishlistProvider></CartProvider><GoogleAnalytics/></body></html>}
