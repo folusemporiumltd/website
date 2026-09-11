@@ -80,11 +80,11 @@ export async function POST(request: Request) {
 
     let welcomeEmailSent = false
     if (shouldSendWelcome) {
-      const templateId = Number(process.env.BREVO_NEWSLETTER_WELCOME_TEMPLATE_ID || '8')
+      const templateId = Number(process.env.BREVO_NEWSLETTER_WELCOME_TEMPLATE_ID || '18')
       const welcomeResponse = await fetch('https://api.brevo.com/v3/smtp/email', {
         method: 'POST',
         headers: { accept: 'application/json', 'content-type': 'application/json', 'api-key': apiKey },
-        body: JSON.stringify({ to: [{ email }], templateId: Number.isFinite(templateId) && templateId > 0 ? templateId : 8 }),
+        body: JSON.stringify({ to: [{ email }], templateId: Number.isFinite(templateId) && templateId > 0 ? templateId : 18 }),
         cache: 'no-store',
       })
 
