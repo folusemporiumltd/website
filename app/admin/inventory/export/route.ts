@@ -30,22 +30,26 @@ export async function GET() {
       const product: any = productMap.get(variant.product_id)
       const stock = Number(variant.stock_quantity ?? 0)
       const threshold = Number(variant.reorder_threshold ?? 5)
+      const price = Number(variant.price ?? product?.price ?? 0)
       const status = stock === 0 ? 'Out of stock' : stock <= threshold ? 'Low stock' : 'Healthy'
+      const suggestedReorder = stock <= threshold ? Math.max((threshold * 2) - stock, 0) : 0
       return {
         product: product?.name || 'Product',
         category: product?.category_name || product?.category || '',
         size: variant.size_label || '',
-        price: variant.price ?? '',
+        price,
         stock,
         threshold,
         status,
+        suggested_reorder: suggestedReorder,
+        stock_value: price * stock,
         featured: product?.featured ? 'Yes' : 'No',
         product_active: product?.is_active ? 'Yes' : 'No',
       }
     })
     .sort((a: any, b: any) => a.product.localeCompare(b.product) || String(a.size).localeCompare(String(b.size)))
 
-  const header = ['Product', 'Category', 'Package Size', 'Price (NGN)', 'Current Stock', 'Reorder Threshold', 'Stock Status', 'Featured', 'Product Active']
+  const header = ['Product', 'Category', 'Package Size', 'Price (NGN)', 'Current Stock', 'Reorder Threshold', 'Stock Status', 'Suggested Reorder Qty', 'Current Stock Value (NGN)', 'Featured', 'Product Active']
   const lines = [header.map(csvCell).join(',')]
 
   for (const row of rows) {
@@ -53,10 +57,12 @@ export async function GET() {
       row.product,
       row.category,
       row.size,
-      row.price,
+      row.price.toFixed(2),
       row.stock,
       row.threshold,
       row.status,
+      row.suggested_reorder,
+      row.stock_value.toFixed(2),
       row.featured,
       row.product_active,
     ].map(csvCell).join(','))
