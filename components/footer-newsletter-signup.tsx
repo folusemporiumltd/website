@@ -12,6 +12,16 @@ export default function FooterNewsletterSignup() {
 
   useEffect(() => {
     const mount = () => {
+      const accountGroups = Array.from(document.querySelectorAll('.luxury-footer .footer-links-grid > div'))
+      const accountGroup = accountGroups.find(group => group.querySelector('h3')?.textContent?.trim() === 'My Account')
+      if (accountGroup && !accountGroup.querySelector('a[href="/help"]')) {
+        const link = document.createElement('a')
+        link.href = '/help'
+        link.textContent = 'Help Desk'
+        const tracking = accountGroup.querySelector('a[href="/account"]')
+        tracking?.insertAdjacentElement('afterend', link)
+      }
+
       const row = document.querySelector('.footer-social-row')
       const payment = row?.querySelector('.footer-payment-logos')
       if (!row || !payment) return
@@ -41,16 +51,9 @@ export default function FooterNewsletterSignup() {
     setBusy(true)
     setStatus('')
     const supabase = createClient()
-    const { error } = await supabase.rpc('subscribe_newsletter', {
-      p_email: value,
-      p_full_name: null,
-      p_source: 'footer',
-    })
+    const { error } = await supabase.rpc('subscribe_newsletter', { p_email: value, p_full_name: null, p_source: 'footer' })
     setBusy(false)
-    if (error) {
-      setStatus(error.message.includes('email') ? 'Please enter a valid email address.' : 'Subscription could not be completed. Please try again.')
-      return
-    }
+    if (error) { setStatus(error.message.includes('email') ? 'Please enter a valid email address.' : 'Subscription could not be completed. Please try again.'); return }
     setEmail('')
     setStatus('You’re subscribed. Thank you!')
   }
@@ -62,18 +65,8 @@ export default function FooterNewsletterSignup() {
       <b style={{ display: 'block', marginBottom: 8 }}>Join Our Newsletter</b>
       <p style={{ margin: '0 0 10px', fontSize: 13, lineHeight: 1.5 }}>Get Folus Emporium product updates, offers and useful food tips.</p>
       <form onSubmit={subscribe} style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
-        <input
-          type="email"
-          aria-label="Email address for newsletter"
-          placeholder="Enter your email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          style={{ minWidth: 210, flex: '1 1 220px', maxWidth: 290, padding: '10px 12px', borderRadius: 8, border: '1px solid #d9c9c1' }}
-        />
-        <button className="btn btn-primary" type="submit" disabled={busy} style={{ padding: '10px 16px' }}>
-          {busy ? 'Subscribing…' : 'Subscribe'}
-        </button>
+        <input type="email" aria-label="Email address for newsletter" placeholder="Enter your email" value={email} onChange={(e) => setEmail(e.target.value)} required style={{ minWidth: 210, flex: '1 1 220px', maxWidth: 290, padding: '10px 12px', borderRadius: 8, border: '1px solid #d9c9c1' }}/>
+        <button className="btn btn-primary" type="submit" disabled={busy} style={{ padding: '10px 16px' }}>{busy ? 'Subscribing…' : 'Subscribe'}</button>
       </form>
       {status ? <div role="status" style={{ fontSize: 12, marginTop: 8 }}>{status}</div> : null}
     </div>,
