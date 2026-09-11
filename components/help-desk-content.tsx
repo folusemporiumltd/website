@@ -35,7 +35,7 @@ const topics:Topic[]=[
 {q:'How do I subscribe?',a:<>Use the newsletter form in the website footer or opt in during registration.</>},
 {q:'How do I change my newsletter preference?',a:<>Registered customers can update their preference from <Link href="/account">My Account</Link>.</>}]},
 {id:'support',title:'Contact Support',description:'Reach Folus Emporium when you need personal assistance.',icon:'🎧',questions:[
-{q:'How can I contact Folus Emporium?',a:<div className="help-contact"><a className="btn btn-primary" href="https://wa.me/2349168157255">WhatsApp Support</a><a className="btn btn-outline" href="mailto:folusemporium@gmail.com">Email Support</a><Link className="btn btn-outline" href="/contact">Contact page</Link></div>},
+{q:'How can I contact Folus Emporium?',a:<div className="help-contact"><a className="btn btn-outline" href="https://wa.me/2349168157255">WhatsApp Support</a><a className="btn btn-outline" href="mailto:folusemporium@gmail.com">Email Support</a><Link className="btn btn-outline" href="/contact">Contact page</Link></div>},
 {q:'What should I include for an order-related enquiry?',a:<>Include your order reference and a brief explanation of the issue so the support team can assist faster.</>}]}
 ]
 
