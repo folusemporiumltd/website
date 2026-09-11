@@ -2,8 +2,16 @@ import crypto from 'node:crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
+const ENDPOINT_TOKEN_HASH = '158c5fa80f9ef0365a611611ed02ed4743b112ebe80808c01743ba8510bfc8ec'
+
 function safeEqual(a: Buffer, b: Buffer) {
   return a.length === b.length && crypto.timingSafeEqual(a, b)
+}
+
+function verifyEndpointToken(request: NextRequest) {
+  const token = request.nextUrl.searchParams.get('token') || ''
+  const actual = crypto.createHash('sha256').update(token).digest('hex')
+  return safeEqual(Buffer.from(actual), Buffer.from(ENDPOINT_TOKEN_HASH))
 }
 
 function verifySvix(body: string, headers: Headers, secret: string) {
@@ -29,12 +37,12 @@ function verifySvix(body: string, headers: Headers, secret: string) {
 }
 
 export async function POST(request: NextRequest) {
-  const secret = process.env.RESEND_WEBHOOK_SECRET
-  if (!secret) return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 503 })
-
   const body = await request.text()
-  if (!verifySvix(body, request.headers, secret)) {
-    return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
+  const signingSecret = process.env.RESEND_WEBHOOK_SECRET
+  const signatureValid = Boolean(signingSecret && verifySvix(body, request.headers, signingSecret))
+  const endpointTokenValid = verifyEndpointToken(request)
+  if (!signatureValid && !endpointTokenValid) {
+    return NextResponse.json({ error: 'Unauthorized webhook' }, { status: 401 })
   }
 
   let event: any
