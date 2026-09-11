@@ -40,16 +40,36 @@ export default function ChangePasswordForm() {
 
     try {
       const supabase = createClient()
+      const { data: userData, error: userError } = await supabase.auth.getUser()
+      const email = userData.user?.email
+
+      if (userError || !email) {
+        setError('Your session could not be verified. Please sign in again and retry.')
+        return
+      }
+
+      const { error: verifyError } = await supabase.auth.signInWithPassword({
+        email,
+        password: currentPassword,
+      })
+
+      if (verifyError) {
+        const text = verifyError.message.toLowerCase()
+        if (text.includes('invalid login credentials') || text.includes('invalid credentials')) {
+          setError('Your current password is incorrect. Please try again.')
+        } else {
+          setError(verifyError.message || 'We could not verify your current password. Please try again.')
+        }
+        return
+      }
+
       const { error: updateError } = await supabase.auth.updateUser({
         password: newPassword,
-        current_password: currentPassword,
       })
 
       if (updateError) {
         const text = updateError.message.toLowerCase()
-        if (text.includes('current password') || text.includes('password is incorrect') || text.includes('invalid credentials')) {
-          setError('Your current password is incorrect. Please try again.')
-        } else if (text.includes('same password') || text.includes('different')) {
+        if (text.includes('same password') || text.includes('different')) {
           setError('Please choose a password that is different from your current password.')
         } else {
           setError(updateError.message || 'We could not change your password. Please try again.')
