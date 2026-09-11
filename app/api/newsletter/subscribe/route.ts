@@ -24,6 +24,13 @@ export async function POST(request: Request) {
     }
 
     const supabase = createAdminClient()
+    const { data: existingSubscriber } = await supabase
+      .from('newsletter_subscribers')
+      .select('status, welcome_email_sent_at')
+      .eq('email', email)
+      .maybeSingle()
+    const shouldSendWelcome = !existingSubscriber?.welcome_email_sent_at && existingSubscriber?.status !== 'subscribed'
+
     const { error: subscribeError } = await supabase.rpc('subscribe_newsletter', {
       p_email: email,
       p_full_name: fullName,
@@ -81,7 +88,40 @@ export async function POST(request: Request) {
       .update({ brevo_synced_at: new Date().toISOString(), brevo_sync_error: null })
       .eq('email', email)
 
-    return NextResponse.json({ ok: true, syncedToBrevo: true })
+    let welcomeEmailSent = false
+    if (shouldSendWelcome) {
+      const templateId = Number(process.env.BREVO_NEWSLETTER_WELCOME_TEMPLATE_ID || '1')
+      const welcomeResponse = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+          accept: 'application/json',
+          'content-type': 'application/json',
+          'api-key': apiKey,
+        },
+        body: JSON.stringify({
+          to: [{ email }],
+          templateId: Number.isFinite(templateId) && templateId > 0 ? templateId : 1,
+        }),
+        cache: 'no-store',
+      })
+
+      if (welcomeResponse.ok) {
+        welcomeEmailSent = true
+        await supabase
+          .from('newsletter_subscribers')
+          .update({ welcome_email_sent_at: new Date().toISOString(), welcome_email_error: null })
+          .eq('email', email)
+      } else {
+        const detail = (await welcomeResponse.text()).slice(0, 500)
+        console.error('Brevo newsletter welcome email failed', welcomeResponse.status, detail)
+        await supabase
+          .from('newsletter_subscribers')
+          .update({ welcome_email_error: `Brevo ${welcomeResponse.status}: ${detail}`.slice(0, 1000) })
+          .eq('email', email)
+      }
+    }
+
+    return NextResponse.json({ ok: true, syncedToBrevo: true, welcomeEmailSent })
   } catch (error) {
     console.error('Newsletter subscribe route error', error)
     return NextResponse.json({ ok: false, error: 'Subscription could not be completed. Please try again.' }, { status: 500 })
