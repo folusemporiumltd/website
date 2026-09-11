@@ -12,6 +12,7 @@ function Icon({ name }: { name: string }) {
   const common = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const }
   if (name === 'search') return <svg viewBox="0 0 24 24" {...common}><circle cx="11" cy="11" r="6"/><path d="m16 16 4 4"/></svg>
   if (name === 'account') return <svg viewBox="0 0 24 24" {...common}><circle cx="12" cy="8" r="3.5"/><path d="M4.5 20c1-3.6 3.7-5.5 7.5-5.5s6.5 1.9 7.5 5.5"/></svg>
+  if (name === 'help') return <svg viewBox="0 0 24 24" {...common}><circle cx="12" cy="12" r="9"/><path d="M9.7 9a2.5 2.5 0 0 1 4.8 1c0 2-2.5 2.2-2.5 4"/><path d="M12 17h.01"/></svg>
   if (name === 'heart') return <svg viewBox="0 0 24 24" {...common}><path d="M20.7 8.7c0 5.2-8.7 10-8.7 10s-8.7-4.8-8.7-10C3.3 6 5.3 4 8 4c1.8 0 3.3.9 4 2.3C12.7 4.9 14.2 4 16 4c2.7 0 4.7 2 4.7 4.7Z"/></svg>
   if (name === 'chevron') return <svg viewBox="0 0 24 24" {...common}><path d="m8 10 4 4 4-4"/></svg>
   return <svg viewBox="0 0 24 24" {...common}><path d="M4 7h16l-1 12H5L4 7Z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>
@@ -32,48 +33,24 @@ export function TrustIcon({ name }: { name: string }) {
   return <svg viewBox="0 0 24 24" {...common}><path d="M20 15a4 4 0 0 1-4 4H8l-4 3v-7a4 4 0 0 1-2-3.5v-4A4 4 0 0 1 6 3h10a4 4 0 0 1 4 4v8Z"/><path d="M7 10h10M7 14h6"/></svg>
 }
 
+const helpLinks:[string,string][]=[['Help Desk','/help'],['How to place an order','/help#orders'],['Payment options','/help#payments'],['Track an order','/help#tracking'],['Account & registration','/help#account'],['Wishlist','/help#wishlist'],['Coupons & discounts','/help#coupons'],['Returns & refunds','/help#returns'],['Delivery & fulfilment','/help#delivery'],['Contact support','/help#support']]
+
 export function StorefrontHeader({ config, categories }: { config: Config; categories: { name: string; slug: string }[] }) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('')
-  const search = (event: FormEvent) => {
-    event.preventDefault()
-    const params = new URLSearchParams()
-    if (query.trim()) params.set('search', query.trim())
-    if (category) params.set('category', category)
-    window.location.assign('/shop' + (params.size ? '?' + params.toString() : ''))
-  }
-  const social = ['facebook', 'tiktok', 'whatsapp', 'instagram'].map(name => [name, config.social?.[name] ?? ''] as const).filter(([, url]) => Boolean(url))
+  const search = (event: FormEvent) => { event.preventDefault(); const params = new URLSearchParams(); if (query.trim()) params.set('search', query.trim()); if (category) params.set('category', category); window.location.assign('/shop' + (params.size ? '?' + params.toString() : '')) }
+  const social = ['facebook','tiktok','whatsapp','instagram'].map(name=>[name,config.social?.[name]??''] as const).filter(([,url])=>Boolean(url))
   return <header className="storefront-header">
-    <div className="utility-bar"><div className="container utility-inner"><span>{config.announcement}</span><div className="utility-right">{(config.utilityLinks ?? []).map(([label, href]) => <Link href={href} key={label}>{label}</Link>)}{social.map(([name, url]) => <a className="social-link" href={url} target="_blank" rel="noreferrer" key={name} aria-label={name}><SocialIcon name={name}/></a>)}</div></div></div>
+    <div className="utility-bar"><div className="container utility-inner"><span>{config.announcement}</span><div className="utility-right">{(config.utilityLinks??[]).map(([label,href])=><Link href={href} key={label}>{label}</Link>)}{social.map(([name,url])=><a className="social-link" href={url} target="_blank" rel="noreferrer" key={name} aria-label={name}><SocialIcon name={name}/></a>)}</div></div></div>
     <div className="header-main"><div className="container header-main-inner">
       <Link className="luxury-brand" href="/"><img src="/folus-emporium-circular-logo.png" alt="Folus Emporium logo"/><span><b>FOLUS<br/>EMPORIUM</b><small>Nature’s Goodness, Purely Yours</small></span></Link>
-      <form className="catalogue-search" onSubmit={search}><select aria-label="Product category" value={category} onChange={e => setCategory(e.target.value)}><option value="">All Categories</option>{categories.map(item => <option value={item.slug} key={item.slug}>{item.name}</option>)}</select><input aria-label="Search products" placeholder="Search products..." value={query} onChange={e => setQuery(e.target.value)}/><button aria-label="Search products" type="submit"><Icon name="search"/></button></form>
-      <div className="header-tools"><Link href="/account" aria-label="My account"><Icon name="account"/><span>Account</span></Link><Link href="/wishlist" aria-label="Wishlist"><Icon name="heart"/><span>Wishlist</span></Link><CartLink/></div>
-      <button className="mobile-menu-toggle" aria-label={mobileOpen?'Close menu':'Open menu'} aria-expanded={mobileOpen} aria-controls="primary-navigation" onClick={() => setMobileOpen(v => !v)}>{mobileOpen ? '×' : '☰'}</button>
+      <form className="catalogue-search" onSubmit={search}><select aria-label="Product category" value={category} onChange={e=>setCategory(e.target.value)}><option value="">All Categories</option>{categories.map(item=><option value={item.slug} key={item.slug}>{item.name}</option>)}</select><input aria-label="Search products" placeholder="Search products..." value={query} onChange={e=>setQuery(e.target.value)}/><button aria-label="Search products" type="submit"><Icon name="search"/></button></form>
+      <div className="header-tools"><Link href="/account" aria-label="My account"><Icon name="account"/><span>Account</span></Link><div className="header-help-menu"><Link href="/help" aria-label="Help"><Icon name="help"/><span>Help</span></Link><div className="header-help-dropdown" role="menu" aria-label="Help categories">{helpLinks.map(([label,href])=><Link href={href} role="menuitem" key={label}>{label}</Link>)}</div></div><Link href="/wishlist" aria-label="Wishlist"><Icon name="heart"/><span>Wishlist</span></Link><CartLink/></div>
+      <button className="mobile-menu-toggle" aria-label={mobileOpen?'Close menu':'Open menu'} aria-expanded={mobileOpen} aria-controls="primary-navigation" onClick={()=>setMobileOpen(v=>!v)}>{mobileOpen?'×':'☰'}</button>
     </div></div>
-    <nav id="primary-navigation" className={'primary-navigation ' + (mobileOpen ? 'open' : '')}>
-      <div className="container">
-        {(config.navigation ?? []).map(([label, href]) => label === 'Categories' ? (
-          <div className="nav-category-dropdown" key={label}>
-            <Link className="nav-category-trigger" href="/shop" onClick={() => setMobileOpen(false)} aria-haspopup="true">
-              {label}<Icon name="chevron"/>
-            </Link>
-            <div className="nav-category-menu" role="menu" aria-label="Product categories">
-              <Link href="/shop" role="menuitem" onClick={() => setMobileOpen(false)}>All Products</Link>
-              {categories.map(item => <Link href={`/shop?category=${item.slug}`} role="menuitem" onClick={() => setMobileOpen(false)} key={item.slug}>{item.name}</Link>)}
-            </div>
-          </div>
-        ) : <Link href={href} onClick={() => setMobileOpen(false)} key={label}>{label}</Link>)}
-      </div>
-    </nav>
+    <nav id="primary-navigation" className={'primary-navigation '+(mobileOpen?'open':'')}><div className="container">{(config.navigation??[]).map(([label,href])=>label==='Categories'?<div className="nav-category-dropdown" key={label}><Link className="nav-category-trigger" href="/shop" onClick={()=>setMobileOpen(false)} aria-haspopup="true">{label}<Icon name="chevron"/></Link><div className="nav-category-menu" role="menu" aria-label="Product categories"><Link href="/shop" role="menuitem" onClick={()=>setMobileOpen(false)}>All Products</Link>{categories.map(item=><Link href={`/shop?category=${item.slug}`} role="menuitem" onClick={()=>setMobileOpen(false)} key={item.slug}>{item.name}</Link>)}</div></div>:<Link href={href} onClick={()=>setMobileOpen(false)} key={label}>{label}</Link>)}</div></nav>
   </header>
 }
 
-export function HeroCarousel({ slides }: { slides: Slide[] }) {
-  const [index, setIndex] = useState(0)
-  if (!slides.length) return null
-  const slide = slides[index]
-  const move = (by: number) => setIndex((index + by + slides.length) % slides.length)
-  return <section className="luxury-hero"><div className="container"><div className="hero-carousel-card"><div className="hero-copy"><div className="eyebrow">Folus Emporium</div><h1>{slide.title}</h1><p>{slide.text}</p><Link className="btn btn-primary" href={slide.href}>{slide.cta}</Link></div><div className="hero-banner"><img src={slide.image} alt={slide.title}/></div><button className="hero-arrow previous" onClick={() => move(-1)} aria-label="Previous slide">←</button><button className="hero-arrow next" onClick={() => move(1)} aria-label="Next slide">→</button><div className="hero-dots">{slides.map((item, itemIndex) => <button onClick={() => setIndex(itemIndex)} className={itemIndex === index ? 'active' : ''} aria-label={'Show slide ' + (itemIndex + 1)} key={item.title}/>)}</div></div></div></section>
-}
+export function HeroCarousel({ slides }: { slides: Slide[] }) { const [index,setIndex]=useState(0); if(!slides.length)return null; const slide=slides[index]; const move=(by:number)=>setIndex((index+by+slides.length)%slides.length); return <section className="luxury-hero"><div className="container"><div className="hero-carousel-card"><div className="hero-copy"><div className="eyebrow">Folus Emporium</div><h1>{slide.title}</h1><p>{slide.text}</p><Link className="btn btn-primary" href={slide.href}>{slide.cta}</Link></div><div className="hero-banner"><img src={slide.image} alt={slide.title}/></div><button className="hero-arrow previous" onClick={()=>move(-1)} aria-label="Previous slide">←</button><button className="hero-arrow next" onClick={()=>move(1)} aria-label="Next slide">→</button><div className="hero-dots">{slides.map((item,itemIndex)=><button onClick={()=>setIndex(itemIndex)} className={itemIndex===index?'active':''} aria-label={'Show slide '+(itemIndex+1)} key={item.title}/>)}</div></div></div></section> }
