@@ -11,7 +11,23 @@ export default function FooterNewsletterSignup() {
   const [busy, setBusy] = useState(false)
 
   useEffect(() => {
-    const mount = () => setTarget(document.querySelector('.footer-social-row'))
+    const mount = () => {
+      const row = document.querySelector('.footer-social-row')
+      const payment = row?.querySelector('.footer-payment-logos')
+      if (!row || !payment) return
+
+      let host = row.querySelector('.footer-newsletter-host') as HTMLElement | null
+      if (!host) {
+        host = document.createElement('div')
+        host.className = 'footer-newsletter-host'
+        host.style.flex = '1 1 320px'
+        host.style.maxWidth = '430px'
+        host.style.margin = '0 auto'
+        row.insertBefore(host, payment)
+      }
+      setTarget(host)
+    }
+
     mount()
     const observer = new MutationObserver(mount)
     observer.observe(document.body, { childList: true, subtree: true })
@@ -42,7 +58,7 @@ export default function FooterNewsletterSignup() {
   if (!target) return null
 
   return createPortal(
-    <div style={{ flex: '1 1 320px', maxWidth: 430, textAlign: 'center', margin: '0 auto', padding: '0 18px' }}>
+    <div style={{ textAlign: 'center', padding: '0 18px' }}>
       <b style={{ display: 'block', marginBottom: 8 }}>Join Our Newsletter</b>
       <p style={{ margin: '0 0 10px', fontSize: 13, lineHeight: 1.5 }}>Get Folus Emporium product updates, offers and useful food tips.</p>
       <form onSubmit={subscribe} style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
