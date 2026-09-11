@@ -58,7 +58,8 @@ export async function updateSession(request: NextRequest) {
     pathname === '/contact' ||
     pathname.startsWith('/p/') ||
     pathname.startsWith('/payment/callback') ||
-    pathname === '/api/paystack/webhook'
+    pathname === '/api/paystack/webhook' ||
+    pathname === '/api/assets/folus-email-logo'
 
   if (!user && !publicRoute) {
     const url = request.nextUrl.clone()
