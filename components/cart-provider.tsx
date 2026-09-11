@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 
 export type CartItem = {
   id: string
@@ -29,19 +29,22 @@ const STORAGE_KEY = 'folus-emporium-cart'
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([])
+  const [loaded, setLoaded] = useState(false)
+  const clearCart = useCallback(() => setItems(current => current.length ? [] : current), [])
+  const wholeQuantity = (value: number) => Math.max(1, Math.min(100, Math.floor(Number(value) || 1)))
 
   useEffect(() => {
     try {
       const saved = window.localStorage.getItem(STORAGE_KEY)
-      if (saved) setItems(JSON.parse(saved))
+      if (saved) { const parsed = JSON.parse(saved); if (Array.isArray(parsed)) setItems(parsed.filter(item => item && typeof item.id === 'string' && typeof item.name === 'string' && typeof item.slug === 'string' && Number.isFinite(Number(item.price)) && Number(item.price) >= 0).map(item => ({...item, price:Number(item.price), quantity:wholeQuantity(item.quantity)}))) }
     } catch {
-      window.localStorage.removeItem(STORAGE_KEY)
-    }
+      // Storage may be unavailable; the cart still works in memory.
+    } finally { setLoaded(true) }
   }, [])
 
   useEffect(() => {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items))
-  }, [items])
+    if (loaded) { try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items)) } catch {} }
+  }, [items, loaded])
 
   const value = useMemo(() => ({
     items,
@@ -50,16 +53,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     addItem: (item: Omit<CartItem, 'quantity'>, quantity = 1) => {
       setItems(current => {
         const existing = current.find(x => x.id === item.id)
-        if (existing) return current.map(x => x.id === item.id ? { ...x, quantity: x.quantity + quantity } : x)
-        return [...current, { ...item, quantity }]
+        if (existing) return current.map(x => x.id === item.id ? { ...x, quantity: wholeQuantity(x.quantity + wholeQuantity(quantity)) } : x)
+        return [...current, { ...item, quantity: wholeQuantity(quantity) }]
       })
     },
     updateQuantity: (id: string, quantity: number) => {
-      setItems(current => quantity <= 0 ? current.filter(x => x.id !== id) : current.map(x => x.id === id ? { ...x, quantity } : x))
+      setItems(current => quantity <= 0 ? current.filter(x => x.id !== id) : current.map(x => x.id === id ? { ...x, quantity: wholeQuantity(quantity) } : x))
     },
     removeItem: (id: string) => setItems(current => current.filter(x => x.id !== id)),
-    clearCart: () => setItems([]),
-  }), [items])
+    clearCart,
+  }), [items, clearCart])
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>
 }

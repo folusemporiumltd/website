@@ -50,9 +50,9 @@ export function StorefrontHeader({ config, categories }: { config: Config; categ
       <Link className="luxury-brand" href="/"><img src="/folus-emporium-circular-logo.png" alt="Folus Emporium logo"/><span><b>FOLUS<br/>EMPORIUM</b><small>Nature’s Goodness, Purely Yours</small></span></Link>
       <form className="catalogue-search" onSubmit={search}><select aria-label="Product category" value={category} onChange={e => setCategory(e.target.value)}><option value="">All Categories</option>{categories.map(item => <option value={item.slug} key={item.slug}>{item.name}</option>)}</select><input aria-label="Search products" placeholder="Search products..." value={query} onChange={e => setQuery(e.target.value)}/><button aria-label="Search products" type="submit"><Icon name="search"/></button></form>
       <div className="header-tools"><Link href="/account" aria-label="My account"><Icon name="account"/><span>Account</span></Link><Link href="/wishlist" aria-label="Wishlist"><Icon name="heart"/><span>Wishlist</span></Link><CartLink/></div>
-      <button className="mobile-menu-toggle" aria-label="Open menu" onClick={() => setMobileOpen(v => !v)}>{mobileOpen ? '×' : '☰'}</button>
+      <button className="mobile-menu-toggle" aria-label={mobileOpen?'Close menu':'Open menu'} aria-expanded={mobileOpen} aria-controls="primary-navigation" onClick={() => setMobileOpen(v => !v)}>{mobileOpen ? '×' : '☰'}</button>
     </div></div>
-    <nav className={'primary-navigation ' + (mobileOpen ? 'open' : '')}>
+    <nav id="primary-navigation" className={'primary-navigation ' + (mobileOpen ? 'open' : '')}>
       <div className="container">
         {(config.navigation ?? []).map(([label, href]) => label === 'Categories' ? (
           <div className="nav-category-dropdown" key={label}>
