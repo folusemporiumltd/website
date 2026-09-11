@@ -47,6 +47,7 @@ export async function signup(formData: FormData) {
   const address = String(formData.get('address') ?? '').trim()
   const city = String(formData.get('city') ?? '').trim()
   const state = String(formData.get('state') ?? '').trim()
+  const newsletterConsent = formData.get('newsletter_consent') === 'on'
   const next = safeNext(String(formData.get('next') ?? '/account'))
   const requestHeaders = await headers()
   const host = requestHeaders.get('x-forwarded-host') ?? requestHeaders.get('host')
@@ -70,6 +71,10 @@ export async function signup(formData: FormData) {
   })
 
   if (error) redirect(`/login?error=${encodeURIComponent(error.message)}&next=${encodeURIComponent(next)}&mode=signup`)
+
+  if (newsletterConsent) {
+    await supabase.rpc('subscribe_newsletter', { p_email: email, p_full_name: fullName, p_source: 'registration' })
+  }
 
   if (data.session) {
     revalidatePath('/', 'layout')
