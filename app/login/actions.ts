@@ -19,6 +19,36 @@ function getPublicOrigin(host: string | null, protocol: string) {
   return process.env.NEXT_PUBLIC_SITE_URL || PUBLIC_SITE_URL
 }
 
+async function sendCustomerWelcomeEmail(email: string) {
+  const apiKey = process.env.BREVO_API_KEY
+  if (!apiKey) {
+    console.warn('BREVO_API_KEY is not configured. Customer welcome email was not sent.')
+    return
+  }
+
+  const configuredTemplateId = Number(process.env.BREVO_CUSTOMER_WELCOME_TEMPLATE_ID || '25')
+  const templateId = Number.isFinite(configuredTemplateId) && configuredTemplateId > 0 ? configuredTemplateId : 25
+
+  const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: {
+      accept: 'application/json',
+      'content-type': 'application/json',
+      'api-key': apiKey,
+    },
+    body: JSON.stringify({
+      to: [{ email }],
+      templateId,
+    }),
+    cache: 'no-store',
+  })
+
+  if (!response.ok) {
+    const detail = (await response.text()).slice(0, 500)
+    console.error('Brevo customer welcome email failed', response.status, detail)
+  }
+}
+
 export async function login(formData: FormData) {
   const supabase = await createClient()
   const email = String(formData.get('email') ?? '').trim()
@@ -71,6 +101,15 @@ export async function signup(formData: FormData) {
   })
 
   if (error) redirect(`/login?error=${encodeURIComponent(error.message)}&next=${encodeURIComponent(next)}&mode=signup`)
+
+  const isNewAccount = Array.isArray(data.user?.identities) && data.user.identities.length > 0
+  if (isNewAccount) {
+    try {
+      await sendCustomerWelcomeEmail(email)
+    } catch (welcomeError) {
+      console.error('Customer welcome email error', welcomeError)
+    }
+  }
 
   if (newsletterConsent) {
     await supabase.rpc('subscribe_newsletter', { p_email: email, p_full_name: fullName, p_source: 'registration' })
