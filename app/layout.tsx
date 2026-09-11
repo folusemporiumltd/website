@@ -8,7 +8,6 @@ import { CartProvider } from '@/components/cart-provider'
 import { WishlistProvider } from '@/components/wishlist-provider'
 import FloatingWhatsApp from '@/components/floating-whatsapp'
 import GoogleAnalytics from '@/components/google-analytics'
-import FooterNewsletterSignup from '@/components/footer-newsletter-signup'
 import StorefrontFooter from '@/components/storefront-footer'
 import AdminFormLoading from '@/components/admin-form-loading'
 
@@ -28,4 +27,4 @@ export const metadata:Metadata={
   icons:{icon:[{url:'/icon.png',type:'image/png'}],shortcut:[{url:'/icon.png',type:'image/png'}],apple:[{url:'/apple-icon.png',type:'image/png'}]}
 }
 
-export default function RootLayout({children}:Readonly<{children:React.ReactNode}>){return <html lang="en-NG"><body><CartProvider><WishlistProvider>{children}<FooterNewsletterSignup/><StorefrontFooter/><FloatingWhatsApp/><AdminFormLoading/></WishlistProvider></CartProvider><GoogleAnalytics/><Analytics/></body></html>}
+export default function RootLayout({children}:Readonly<{children:React.ReactNode}>){return <html lang="en-NG"><body><CartProvider><WishlistProvider>{children}<StorefrontFooter/><FloatingWhatsApp/><AdminFormLoading/></WishlistProvider></CartProvider><GoogleAnalytics/><Analytics/></body></html>}
