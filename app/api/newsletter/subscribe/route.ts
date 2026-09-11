@@ -64,11 +64,7 @@ export async function POST(request: Request) {
 
     const brevoResponse = await fetch('https://api.brevo.com/v3/contacts', {
       method: 'POST',
-      headers: {
-        accept: 'application/json',
-        'content-type': 'application/json',
-        'api-key': apiKey,
-      },
+      headers: { accept: 'application/json', 'content-type': 'application/json', 'api-key': apiKey },
       body: JSON.stringify(payload),
       cache: 'no-store',
     })
@@ -76,48 +72,29 @@ export async function POST(request: Request) {
     if (!brevoResponse.ok) {
       const detail = (await brevoResponse.text()).slice(0, 500)
       console.error('Brevo newsletter sync failed', brevoResponse.status, detail)
-      await supabase
-        .from('newsletter_subscribers')
-        .update({ brevo_sync_error: `Brevo ${brevoResponse.status}: ${detail}`.slice(0, 1000) })
-        .eq('email', email)
+      await supabase.from('newsletter_subscribers').update({ brevo_sync_error: `Brevo ${brevoResponse.status}: ${detail}`.slice(0, 1000) }).eq('email', email)
       return NextResponse.json({ ok: true, syncedToBrevo: false })
     }
 
-    await supabase
-      .from('newsletter_subscribers')
-      .update({ brevo_synced_at: new Date().toISOString(), brevo_sync_error: null })
-      .eq('email', email)
+    await supabase.from('newsletter_subscribers').update({ brevo_synced_at: new Date().toISOString(), brevo_sync_error: null }).eq('email', email)
 
     let welcomeEmailSent = false
     if (shouldSendWelcome) {
-      const templateId = Number(process.env.BREVO_NEWSLETTER_WELCOME_TEMPLATE_ID || '1')
+      const templateId = Number(process.env.BREVO_NEWSLETTER_WELCOME_TEMPLATE_ID || '5')
       const welcomeResponse = await fetch('https://api.brevo.com/v3/smtp/email', {
         method: 'POST',
-        headers: {
-          accept: 'application/json',
-          'content-type': 'application/json',
-          'api-key': apiKey,
-        },
-        body: JSON.stringify({
-          to: [{ email }],
-          templateId: Number.isFinite(templateId) && templateId > 0 ? templateId : 1,
-        }),
+        headers: { accept: 'application/json', 'content-type': 'application/json', 'api-key': apiKey },
+        body: JSON.stringify({ to: [{ email }], templateId: Number.isFinite(templateId) && templateId > 0 ? templateId : 5 }),
         cache: 'no-store',
       })
 
       if (welcomeResponse.ok) {
         welcomeEmailSent = true
-        await supabase
-          .from('newsletter_subscribers')
-          .update({ welcome_email_sent_at: new Date().toISOString(), welcome_email_error: null })
-          .eq('email', email)
+        await supabase.from('newsletter_subscribers').update({ welcome_email_sent_at: new Date().toISOString(), welcome_email_error: null }).eq('email', email)
       } else {
         const detail = (await welcomeResponse.text()).slice(0, 500)
         console.error('Brevo newsletter welcome email failed', welcomeResponse.status, detail)
-        await supabase
-          .from('newsletter_subscribers')
-          .update({ welcome_email_error: `Brevo ${welcomeResponse.status}: ${detail}`.slice(0, 1000) })
-          .eq('email', email)
+        await supabase.from('newsletter_subscribers').update({ welcome_email_error: `Brevo ${welcomeResponse.status}: ${detail}`.slice(0, 1000) }).eq('email', email)
       }
     }
 
