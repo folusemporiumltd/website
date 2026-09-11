@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { loadOrderForEmail, sendOrderEmail } from '@/lib/order-email'
 
 export async function GET(request: Request) {
   const reference = new URL(request.url).searchParams.get('reference')
@@ -25,6 +26,10 @@ export async function GET(request: Request) {
     const supabase = createAdminClient()
     const { data: orderId, error } = await supabase.rpc('mark_order_paid', { p_payment_reference: reference, p_amount_kobo: amountToVerify })
     if (error || !orderId) return NextResponse.json({ error: error?.message || 'Payment succeeded, but we could not confirm the order. Please contact Folus Emporium with your payment reference.' }, { status: 500 })
+
+    const order = await loadOrderForEmail(String(orderId))
+    if (order) await sendOrderEmail(order, 'payment_confirmed')
+
     return NextResponse.json({ paid: true, order_id: orderId, reference })
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Unable to verify payment.' }, { status: 500 })
