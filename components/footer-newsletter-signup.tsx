@@ -2,7 +2,6 @@
 
 import { FormEvent, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { createClient } from '@/lib/supabase/client'
 
 export default function FooterNewsletterSignup() {
   const [target, setTarget] = useState<Element | null>(null)
@@ -50,12 +49,25 @@ export default function FooterNewsletterSignup() {
     if (!value) return
     setBusy(true)
     setStatus('')
-    const supabase = createClient()
-    const { error } = await supabase.rpc('subscribe_newsletter', { p_email: value, p_full_name: null, p_source: 'footer' })
-    setBusy(false)
-    if (error) { setStatus(error.message.includes('email') ? 'Please enter a valid email address.' : 'Subscription could not be completed. Please try again.'); return }
-    setEmail('')
-    setStatus('You’re subscribed. Thank you!')
+
+    try {
+      const response = await fetch('/api/newsletter/subscribe', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ email: value, source: 'footer' }),
+      })
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok || !result?.ok) {
+        setStatus(result?.error || 'Subscription could not be completed. Please try again.')
+        return
+      }
+      setEmail('')
+      setStatus('You’re subscribed. Thank you!')
+    } catch {
+      setStatus('Subscription could not be completed. Please try again.')
+    } finally {
+      setBusy(false)
+    }
   }
 
   if (!target) return null
