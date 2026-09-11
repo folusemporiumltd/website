@@ -1,0 +1,5 @@
+/* The storefront now uses one canonical footer from the root layout.
+   Legacy page-level footers remain in place temporarily but are hidden to
+   prevent duplicate footers while keeping page refactors low-risk. */
+.footer:not(.global-storefront-footer){display:none!important}
+.global-storefront-footer{display:block!important}
