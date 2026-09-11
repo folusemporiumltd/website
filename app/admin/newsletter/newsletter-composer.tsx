@@ -76,7 +76,7 @@ export default function NewsletterComposer({
         </p>
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
-          <button className="btn" type="submit" formAction={sendTestNewsletter}>
+          <button className="btn" type="submit" formAction={sendTestNewsletter} formNoValidate>
             Send Test to Me
           </button>
           <span className="muted" style={{ fontSize: 13 }}>Test recipient: {adminEmail}</span>
