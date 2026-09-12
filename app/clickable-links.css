@@ -1,0 +1,11 @@
+/* Make clickable text in the website body easy to recognise without changing header/navigation styling. */
+main a:not(.btn):not(.brand):not(.category):not(.luxury-brand) {
+  font-weight: 700;
+}
+
+/* Full-card/image links should not force all nested descriptive copy to bold. */
+main .product-card > a,
+main .product-image,
+main .content-brand-card a {
+  font-weight: inherit;
+}
