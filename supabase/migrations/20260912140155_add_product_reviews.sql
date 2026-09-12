@@ -18,15 +18,17 @@ create table if not exists public.product_reviews (
 
 create index if not exists product_reviews_public_idx on public.product_reviews(product_id, created_at desc) where status = 'approved';
 create index if not exists product_reviews_moderation_idx on public.product_reviews(status, created_at desc);
+create index if not exists product_reviews_user_id_idx on public.product_reviews(user_id);
+create index if not exists product_reviews_moderated_by_idx on public.product_reviews(moderated_by) where moderated_by is not null;
 
 alter table public.product_reviews enable row level security;
 grant select on public.product_reviews to anon, authenticated;
 grant insert, update on public.product_reviews to authenticated;
 
 drop policy if exists "Approved reviews are public" on public.product_reviews;
-create policy "Approved reviews are public" on public.product_reviews for select to anon, authenticated using (status = 'approved');
+create policy "Approved reviews are public" on public.product_reviews for select to anon using (status = 'approved');
 drop policy if exists "Customers can read their reviews" on public.product_reviews;
-create policy "Customers can read their reviews" on public.product_reviews for select to authenticated using ((select auth.uid()) = user_id);
+create policy "Customers can read visible or owned reviews" on public.product_reviews for select to authenticated using (status = 'approved' or (select auth.uid()) = user_id);
 
 create or replace function public.submit_product_review(
   p_order_id uuid,
@@ -55,8 +57,8 @@ begin
       and o.user_id = v_user_id
       and (o.payment_status = 'paid' or o.status = 'delivered')
       and exists (
-        select 1 from jsonb_array_elements(coalesce(o.items, '[]'::jsonb)) item
-        where coalesce(item->>'product_id', item->>'id') = p_product_id::text
+        select 1 from public.order_items item
+        where item.order_id = o.id and item.product_id = p_product_id
       )
   ) then
     raise exception 'Only customers who purchased this product can review it.';

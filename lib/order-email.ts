@@ -66,9 +66,12 @@ async function relatedProducts(order:OrderLike){
 
 export async function loadOrderForEmail(orderId:string){
   const db=createAdminClient()
-  const {data,error}=await db.from('orders').select('*').eq('id',orderId).single()
+  const [{data,error},{data:items}]=await Promise.all([
+    db.from('orders').select('*').eq('id',orderId).single(),
+    db.from('order_items').select('product_id,product_name,variant_id,size_label,size_grams,quantity,unit_price,line_total').eq('order_id',orderId),
+  ])
   if(error||!data) return null
-  return data as OrderLike
+  return {...data,items:items||[]} as OrderLike
 }
 
 export async function sendOrderEmail(order:OrderLike,eventKey:string){
