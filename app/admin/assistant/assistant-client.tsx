@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react'
 type Message = { role: 'user' | 'assistant'; content: string }
 type Props = {
   initialMessages: Message[]
+  initialThreadId: string
   openTasks: number
   pendingApprovals: number
   recentActivity: Array<{ id: string; summary: string; created_at: string }>
@@ -19,9 +20,9 @@ const quickActions = [
   'Draft a professional customer follow-up message for an outstanding order.'
 ]
 
-export default function AssistantClient({ initialMessages, openTasks, pendingApprovals, recentActivity }: Props) {
+export default function AssistantClient({ initialMessages, initialThreadId, openTasks, pendingApprovals, recentActivity }: Props) {
   const [messages, setMessages] = useState<Message[]>(initialMessages)
-  const [threadId, setThreadId] = useState('')
+  const [threadId, setThreadId] = useState(initialThreadId)
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
