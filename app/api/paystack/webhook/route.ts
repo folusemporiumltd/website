@@ -1,6 +1,7 @@
 import crypto from 'node:crypto'
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { loadOrderForEmail, sendOrderEmail } from '@/lib/order-email'
 
 export async function POST(request: Request) {
   const secretKey = process.env.PAYSTACK_SECRET_KEY
@@ -20,6 +21,13 @@ export async function POST(request: Request) {
     const supabase = createAdminClient()
     const { data: orderId, error } = await supabase.rpc('mark_order_paid', { p_payment_reference: reference, p_amount_kobo: Math.round(amount) })
     if (error) return NextResponse.json({ error: 'Unable to update order.' }, { status: 500 })
+    if (orderId) {
+      const order = await loadOrderForEmail(String(orderId))
+      if (order) {
+        await sendOrderEmail(order, 'payment_confirmed')
+        await sendOrderEmail(order, 'purchase_thank_you')
+      }
+    }
     return NextResponse.json({ received: true, paid: Boolean(orderId) })
   } catch {
     return NextResponse.json({ error: 'Invalid webhook payload.' }, { status: 400 })
