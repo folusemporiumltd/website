@@ -28,7 +28,10 @@ async function updateOrder(f: FormData) {
 
   const after = await loadOrderForEmail(id)
   if (after && before?.status !== status) await sendOrderEmail(after, `status_${status}`)
-  if (after && before?.payment_status !== payment && payment === 'paid') await sendOrderEmail(after, 'payment_confirmed')
+  if (after && before?.payment_status !== payment && payment === 'paid') {
+    await sendOrderEmail(after, 'payment_confirmed')
+    await sendOrderEmail(after, 'purchase_thank_you')
+  }
 
   revalidatePath('/admin/orders')
   revalidatePath('/admin/dashboard')
@@ -44,6 +47,7 @@ function emailEventLabel(key: string) {
   const labels: Record<string, string> = {
     order_confirmed: 'Order confirmation',
     payment_confirmed: 'Payment confirmation',
+    purchase_thank_you: 'Thank-you & review request',
     status_pending: 'Pending update',
     status_processing: 'Processing update',
     status_shipped: 'Shipped update',
