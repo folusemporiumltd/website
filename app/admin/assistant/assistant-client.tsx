@@ -21,6 +21,7 @@ const quickActions = [
 
 export default function AssistantClient({ initialMessages, openTasks, pendingApprovals, recentActivity }: Props) {
   const [messages, setMessages] = useState<Message[]>(initialMessages)
+  const [threadId, setThreadId] = useState('')
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -37,10 +38,11 @@ export default function AssistantClient({ initialMessages, openTasks, pendingApp
       const res = await fetch('/api/admin/assistant', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message })
+        body: JSON.stringify({ message, threadId: threadId || undefined })
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'The assistant could not complete this request.')
+      if (data.threadId) setThreadId(data.threadId)
       setMessages(prev => [...prev, { role: 'assistant', content: data.reply }])
     } catch (e) {
       setError(e instanceof Error ? e.message : 'The assistant could not complete this request.')
@@ -49,11 +51,19 @@ export default function AssistantClient({ initialMessages, openTasks, pendingApp
     }
   }
 
+  function newConversation(){
+    if(busy)return
+    setThreadId('')
+    setMessages([])
+    setInput('')
+    setError('')
+  }
+
   return <div className="ai-va-layout">
     <section className="ai-va-chat-card">
       <div className="ai-va-chat-head">
         <div><div className="eyebrow">Virtual Assistant · Business Administration</div><h2>Ask Folus VA</h2><p className="muted">Business operations, customers, sales, payments, inventory and administration.</p></div>
-        <span className="ai-va-status">Admin only</span>
+        <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}><span className="ai-va-status">Admin only</span><button type="button" className="btn btn-outline" onClick={newConversation} disabled={busy}>New chat</button></div>
       </div>
 
       <div className="ai-va-quick-actions">
