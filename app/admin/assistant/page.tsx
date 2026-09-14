@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getZohoConnectionStatus } from '@/lib/zoho-crm'
 import { getGmailConnectionStatus } from '@/lib/google-gmail'
+import { getGoogleCalendarConnectionStatus } from '@/lib/google-calendar'
 import AdminBreadcrumbs from '@/components/admin-breadcrumbs'
 import AssistantClient from './assistant-client'
 import '../dashboard/dashboard.css'
@@ -19,13 +20,14 @@ async function requireAdmin(){
 
 export default async function AIVirtualAssistantPage(){
   const {supabase,user}=await requireAdmin()
-  const [{count:openTasks},{count:pendingApprovals},{data:activity},{data:latestThread},zohoStatus,gmailStatus]=await Promise.all([
+  const [{count:openTasks},{count:pendingApprovals},{data:activity},{data:latestThread},zohoStatus,gmailStatus,calendarStatus]=await Promise.all([
     supabase.from('ai_agent_tasks').select('*',{count:'exact',head:true}).in('status',['open','in_progress']),
     supabase.from('ai_agent_approvals').select('*',{count:'exact',head:true}).eq('status','pending'),
     supabase.from('ai_agent_activity').select('id,summary,created_at').order('created_at',{ascending:false}).limit(8),
     supabase.from('ai_agent_threads').select('id,title,updated_at').eq('created_by',user.id).eq('status','open').order('updated_at',{ascending:false}).limit(1).maybeSingle(),
     getZohoConnectionStatus().catch(()=>({connected:false,status:'error',scope:null,expiresAt:null})),
-    getGmailConnectionStatus().catch(()=>({connected:false,status:'error',accounts:[],count:0,canAddMore:true}))
+    getGmailConnectionStatus().catch(()=>({connected:false,status:'error',accounts:[],count:0,canAddMore:true})),
+    getGoogleCalendarConnectionStatus().catch(()=>({connected:false,status:'error',accounts:[],count:0,canAddMore:true}))
   ])
 
   let initialMessages:Array<{role:'user'|'assistant';content:string}>=[]
@@ -50,6 +52,17 @@ export default async function AIVirtualAssistantPage(){
           {gmailStatus.count===0?<p><strong>No Gmail account connected yet.</strong></p>:null}
         </div>
         {gmailStatus.canAddMore ? <a className="btn btn-primary" href="/api/admin/integrations/google/gmail/connect">{gmailStatus.count>0?'Add another Gmail account':'Connect Gmail'}</a> : <span className="ai-va-status">2 of 2 Gmail accounts connected</span>}
+      </div>
+
+      <div className="admin-dashboard-panel" style={{marginBottom:18}}>
+        <div className="eyebrow">Calendar integration</div>
+        <h3>Google Calendar accounts</h3>
+        <p className="muted">Connect up to two Google Calendar accounts. Folus VA can review upcoming meetings, deadlines and scheduled business activities. Calendar access is read-only at this stage.</p>
+        <div style={{display:'grid',gap:10,margin:'14px 0'}}>
+          {(calendarStatus.accounts||[]).map((account:any,index:number)=><div key={account.id||account.email||index} style={{padding:'12px 14px',border:'1px solid var(--line)',borderRadius:12,background:'#fcfaf8'}}><strong>Calendar {index+1}</strong><div style={{marginTop:4}}>{account.email||'Connected account'}</div><small className="muted">{account.connected?'Read-only connected':account.status==='error'?'Needs attention':'Disconnected'}</small></div>)}
+          {calendarStatus.count===0?<p><strong>No Google Calendar account connected yet.</strong></p>:null}
+        </div>
+        {calendarStatus.canAddMore ? <a className="btn btn-primary" href="/api/admin/integrations/google/calendar/connect">{calendarStatus.count>0?'Add another Calendar account':'Connect Google Calendar'}</a> : <span className="ai-va-status">2 of 2 Calendar accounts connected</span>}
       </div>
 
       <AssistantClient initialMessages={initialMessages} initialThreadId={latestThread?.id??''} openTasks={openTasks??0} pendingApprovals={pendingApprovals??0} recentActivity={activity??[]} zohoStatus={zohoStatus}/>
