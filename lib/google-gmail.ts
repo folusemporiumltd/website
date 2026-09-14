@@ -15,12 +15,21 @@ type IntegrationRow = {
 const PROVIDER = 'google_gmail'
 const TOKEN_URL = 'https://oauth2.googleapis.com/token'
 const GMAIL_API = 'https://gmail.googleapis.com/gmail/v1'
+const COMPOSE_SCOPE = 'https://www.googleapis.com/auth/gmail.compose'
 
 async function getConnections(): Promise<IntegrationRow[]> {
   const admin = createAdminClient()
   const { data, error } = await admin.from('ai_agent_integrations').select('id,provider,account_key,status,access_token,refresh_token,scope,expires_at,metadata').eq('provider', PROVIDER).order('created_at',{ascending:true}).limit(2)
   if (error) throw error
   return (data || []) as IntegrationRow[]
+}
+
+async function getConnectionByEmail(email:string):Promise<IntegrationRow|null>{
+  const key=email.trim().toLowerCase()
+  const admin=createAdminClient()
+  const {data,error}=await admin.from('ai_agent_integrations').select('id,provider,account_key,status,access_token,refresh_token,scope,expires_at,metadata').eq('provider',PROVIDER).eq('account_key',key).maybeSingle()
+  if(error)throw error
+  return data as IntegrationRow|null
 }
 
 async function refreshAccessToken(row: IntegrationRow): Promise<IntegrationRow> {
@@ -55,9 +64,11 @@ function headerValue(headers: any[], name: string) {
   return hit?.value || null
 }
 
+function hasComposeScope(scope:string|null){return String(scope||'').split(/\s+/).includes(COMPOSE_SCOPE)}
+
 export async function getGmailConnectionStatus() {
   const rows = await getConnections()
-  const accounts = rows.map(row => ({ id: row.id, email: row.metadata?.email || row.account_key || null, connected: Boolean(row.status === 'active' && row.access_token), status: row.status, scope: row.scope || null, expiresAt: row.expires_at || null }))
+  const accounts = rows.map(row => ({ id: row.id, email: row.metadata?.email || row.account_key || null, connected: Boolean(row.status === 'active' && row.access_token), canSend:hasComposeScope(row.scope), status: row.status, scope: row.scope || null, expiresAt: row.expires_at || null }))
   return { connected: accounts.some(a => a.connected), status: accounts.length ? (accounts.some(a => a.status === 'error') ? 'error' : 'active') : 'disconnected', accounts, count: accounts.length, canAddMore: accounts.length < 2 }
 }
 
@@ -92,4 +103,27 @@ export async function fetchGmailSnapshot() {
   if (!rows.length) return { connected: false, accounts: [], total_unread_count: 0 }
   const accounts = await Promise.all(rows.map(row => fetchAccountSnapshot(row).catch(error => ({ connected:false, email:row.metadata?.email || row.account_key || null, unread_count:0, recent_messages:[], error:error instanceof Error ? error.message : 'Gmail unavailable.' }))))
   return { connected: accounts.some(a => a.connected), accounts, total_unread_count: accounts.reduce((sum,a) => sum + Number(a.unread_count || 0), 0) }
+}
+
+function cleanHeader(value:string){return value.replace(/[\r\n]+/g,' ').trim()}
+function base64Url(value:string){return Buffer.from(value,'utf8').toString('base64').replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
+
+export async function sendApprovedGmailEmail(input:{accountEmail:string;to:string;subject:string;body:string}){
+  const accountEmail=input.accountEmail.trim().toLowerCase()
+  let row=await getConnectionByEmail(accountEmail)
+  if(!row)throw new Error('The selected Gmail account is not connected.')
+  row=await activeConnection(row)
+  if(row.status!=='active'||!row.access_token)throw new Error('The selected Gmail account is not active.')
+  if(!hasComposeScope(row.scope))throw new Error('Approved sending is not authorised for this Gmail account. Reconnect it and grant the requested Gmail permission.')
+  const to=cleanHeader(input.to)
+  const subject=cleanHeader(input.subject)
+  const body=String(input.body||'').trim()
+  if(!/^\S+@\S+\.\S+$/.test(to))throw new Error('A valid recipient email address is required.')
+  if(!subject)throw new Error('Email subject is required.')
+  if(!body)throw new Error('Email body is required.')
+  const raw=[`From: ${cleanHeader(accountEmail)}`,`To: ${to}`,`Subject: ${subject}`,'MIME-Version: 1.0','Content-Type: text/plain; charset="UTF-8"','',''+body].join('\r\n')
+  const response=await fetch(`${GMAIL_API}/users/me/messages/send`,{method:'POST',headers:{Authorization:`Bearer ${row.access_token}`,'Content-Type':'application/json'},body:JSON.stringify({raw:base64Url(raw)}),cache:'no-store'})
+  const json=await response.json()
+  if(!response.ok)throw new Error(json?.error?.message||'Gmail send failed.')
+  return {id:json.id||null,threadId:json.threadId||null,accountEmail,to,subject}
 }
