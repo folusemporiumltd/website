@@ -41,13 +41,21 @@ export async function GET(request: NextRequest) {
     const profile = await profileResponse.json()
     if (profileResponse.ok) email = profile?.emailAddress || null
   } catch {}
+  if (!email) return NextResponse.redirect(new URL('/admin/assistant?gmail=profile_error', request.url))
 
+  const accountKey = email.trim().toLowerCase()
   const admin = createAdminClient()
-  const { data: existing } = await admin.from('ai_agent_integrations').select('refresh_token,metadata').eq('provider', PROVIDER).maybeSingle()
+  const { data: existing } = await admin.from('ai_agent_integrations').select('id,refresh_token,metadata').eq('provider', PROVIDER).eq('account_key',accountKey).maybeSingle()
+  if (!existing) {
+    const { count } = await admin.from('ai_agent_integrations').select('id',{count:'exact',head:true}).eq('provider',PROVIDER)
+    if ((count || 0) >= 2) return NextResponse.redirect(new URL('/admin/assistant?gmail=max_accounts', request.url))
+  }
+
   const expiresIn = Number(token.expires_in || 3600)
   const now = new Date()
-  const { error } = await admin.from('ai_agent_integrations').upsert({
+  const payload = {
     provider: PROVIDER,
+    account_key: accountKey,
     status: 'active',
     access_token: String(token.access_token),
     refresh_token: token.refresh_token ? String(token.refresh_token) : existing?.refresh_token || null,
@@ -58,11 +66,20 @@ export async function GET(request: NextRequest) {
     metadata: { ...(existing?.metadata || {}), email, connected_at: now.toISOString() },
     last_error: null,
     updated_at: now.toISOString(),
-  }, { onConflict: 'provider' })
-  if (error) return NextResponse.redirect(new URL('/admin/assistant?gmail=storage_error', request.url))
+  }
 
-  await supabase.from('ai_agent_activity').insert({ actor_user_id: authData.user.id, event_type: 'integration_connected', summary: 'Gmail connected to Folus VA.', metadata: { provider: PROVIDER, email } })
-  const response = NextResponse.redirect(new URL('/admin/assistant?gmail=connected', request.url))
+  let saveError = null as any
+  if (existing?.id) {
+    const result = await admin.from('ai_agent_integrations').update(payload).eq('id',existing.id)
+    saveError = result.error
+  } else {
+    const result = await admin.from('ai_agent_integrations').insert(payload)
+    saveError = result.error
+  }
+  if (saveError) return NextResponse.redirect(new URL('/admin/assistant?gmail=storage_error', request.url))
+
+  await supabase.from('ai_agent_activity').insert({ actor_user_id: authData.user.id, event_type: 'integration_connected', summary: 'Gmail account connected to Folus VA.', metadata: { provider: PROVIDER, email } })
+  const response = NextResponse.redirect(new URL(`/admin/assistant?gmail=connected&account=${encodeURIComponent(email)}`, request.url))
   response.cookies.set('folus_google_gmail_oauth_state', '', { httpOnly: true, path: '/', maxAge: 0 })
   return response
 }
