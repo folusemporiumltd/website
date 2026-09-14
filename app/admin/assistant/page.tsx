@@ -25,7 +25,7 @@ export default async function AIVirtualAssistantPage(){
     supabase.from('ai_agent_activity').select('id,summary,created_at').order('created_at',{ascending:false}).limit(8),
     supabase.from('ai_agent_threads').select('id,title,updated_at').eq('created_by',user.id).eq('status','open').order('updated_at',{ascending:false}).limit(1).maybeSingle(),
     getZohoConnectionStatus().catch(()=>({connected:false,status:'error',scope:null,expiresAt:null})),
-    getGmailConnectionStatus().catch(()=>({connected:false,status:'error',scope:null,expiresAt:null,email:null}))
+    getGmailConnectionStatus().catch(()=>({connected:false,status:'error',accounts:[],count:0,canAddMore:true}))
   ])
 
   let initialMessages:Array<{role:'user'|'assistant';content:string}>=[]
@@ -43,10 +43,13 @@ export default async function AIVirtualAssistantPage(){
 
       <div className="admin-dashboard-panel" style={{marginBottom:18}}>
         <div className="eyebrow">Email integration</div>
-        <h3>Gmail</h3>
-        <p><strong>{gmailStatus.connected ? 'Connected' : gmailStatus.status === 'error' ? 'Needs attention' : 'Not connected'}</strong>{gmailStatus.email ? ` · ${gmailStatus.email}` : ''}</p>
-        <p className="muted">Read-only access for Folus VA to review recent messages, unread mail and customer follow-up needs. Sending email is not enabled at this stage.</p>
-        {gmailStatus.connected ? <span className="ai-va-status">Read-only connected</span> : <a className="btn btn-primary" href="/api/admin/integrations/google/gmail/connect">Connect Gmail</a>}
+        <h3>Gmail accounts</h3>
+        <p className="muted">Connect up to two Gmail inboxes. Folus VA reads each inbox separately and identifies the source account in its analysis. Sending, replying, archiving and deleting remain disabled.</p>
+        <div style={{display:'grid',gap:10,margin:'14px 0'}}>
+          {(gmailStatus.accounts||[]).map((account:any,index:number)=><div key={account.id||account.email||index} style={{padding:'12px 14px',border:'1px solid var(--line)',borderRadius:12,background:'#fcfaf8'}}><strong>Gmail {index+1}</strong><div style={{marginTop:4}}>{account.email||'Connected account'}</div><small className="muted">{account.connected?'Read-only connected':account.status==='error'?'Needs attention':'Disconnected'}</small></div>)}
+          {gmailStatus.count===0?<p><strong>No Gmail account connected yet.</strong></p>:null}
+        </div>
+        {gmailStatus.canAddMore ? <a className="btn btn-primary" href="/api/admin/integrations/google/gmail/connect">{gmailStatus.count>0?'Add another Gmail account':'Connect Gmail'}</a> : <span className="ai-va-status">2 of 2 Gmail accounts connected</span>}
       </div>
 
       <AssistantClient initialMessages={initialMessages} initialThreadId={latestThread?.id??''} openTasks={openTasks??0} pendingApprovals={pendingApprovals??0} recentActivity={activity??[]} zohoStatus={zohoStatus}/>
