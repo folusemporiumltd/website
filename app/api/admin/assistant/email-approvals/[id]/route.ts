@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { sendApprovedGmailEmail } from '@/lib/google-gmail'
 
+function validEmail(value:string){return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)}
+
 export async function POST(request:NextRequest,{params}:{params:Promise<{id:string}>}){
   const supabase=await createClient()
   const {data:authData}=await supabase.auth.getUser()
@@ -29,7 +31,18 @@ export async function POST(request:NextRequest,{params}:{params:Promise<{id:stri
     return NextResponse.json({status:'rejected'})
   }
 
-  const {data:locked,error:lockError}=await supabase.from('ai_agent_approvals').update({status:'approved',approved_by:user.id,approved_at:now}).eq('id',id).eq('status','pending').select('id,payload,thread_id').maybeSingle()
+  const original:any=approval.payload||{}
+  const to=String(body.to??original.to??'').trim()
+  const subject=String(body.subject??original.subject??'').trim()
+  const emailBody=String(body.emailBody??original.body??'').trim()
+  if(!validEmail(to))return NextResponse.json({error:'Enter a valid recipient email address before approving.'},{status:400})
+  if(!subject)return NextResponse.json({error:'Email subject cannot be empty.'},{status:400})
+  if(!emailBody)return NextResponse.json({error:'Email body cannot be empty.'},{status:400})
+  if(subject.length>998)return NextResponse.json({error:'Email subject is too long.'},{status:400})
+  if(emailBody.length>50000)return NextResponse.json({error:'Email body is too long.'},{status:400})
+
+  const finalPayload={...original,to,subject,body:emailBody,edited_before_approval:Boolean(to!==String(original.to||'')||subject!==String(original.subject||'')||emailBody!==String(original.body||'')),approved_version_at:now}
+  const {data:locked,error:lockError}=await supabase.from('ai_agent_approvals').update({status:'approved',approved_by:user.id,approved_at:now,payload:finalPayload}).eq('id',id).eq('status','pending').select('id,payload,thread_id').maybeSingle()
   if(lockError||!locked)return NextResponse.json({error:'This approval was already processed.'},{status:409})
 
   const payload:any=locked.payload||{}
@@ -37,7 +50,7 @@ export async function POST(request:NextRequest,{params}:{params:Promise<{id:stri
     const sent=await sendApprovedGmailEmail({accountEmail:String(payload.account_email||''),to:String(payload.to||''),subject:String(payload.subject||''),body:String(payload.body||'')})
     await Promise.all([
       supabase.from('ai_agent_approvals').update({status:'executed',executed_at:new Date().toISOString(),payload:{...payload,gmail_message_id:sent.id,gmail_thread_id:sent.threadId}}).eq('id',id),
-      supabase.from('ai_agent_activity').insert({actor_user_id:user.id,thread_id:locked.thread_id,event_type:'approved_action_executed',summary:`Approved Gmail email sent to ${sent.to}.`,metadata:{approval_id:id,account_email:sent.accountEmail,to:sent.to,gmail_message_id:sent.id}})
+      supabase.from('ai_agent_activity').insert({actor_user_id:user.id,thread_id:locked.thread_id,event_type:'approved_action_executed',summary:`Approved Gmail email sent to ${sent.to}.`,metadata:{approval_id:id,account_email:sent.accountEmail,to:sent.to,gmail_message_id:sent.id,edited_before_approval:Boolean(payload.edited_before_approval)}})
     ])
     return NextResponse.json({status:'executed',sent})
   }catch(error:any){
