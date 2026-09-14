@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getZohoConnectionStatus } from '@/lib/zoho-crm'
+import { getGmailConnectionStatus } from '@/lib/google-gmail'
 import AdminBreadcrumbs from '@/components/admin-breadcrumbs'
 import AssistantClient from './assistant-client'
 import '../dashboard/dashboard.css'
@@ -18,12 +19,13 @@ async function requireAdmin(){
 
 export default async function AIVirtualAssistantPage(){
   const {supabase,user}=await requireAdmin()
-  const [{count:openTasks},{count:pendingApprovals},{data:activity},{data:latestThread},zohoStatus]=await Promise.all([
+  const [{count:openTasks},{count:pendingApprovals},{data:activity},{data:latestThread},zohoStatus,gmailStatus]=await Promise.all([
     supabase.from('ai_agent_tasks').select('*',{count:'exact',head:true}).in('status',['open','in_progress']),
     supabase.from('ai_agent_approvals').select('*',{count:'exact',head:true}).eq('status','pending'),
     supabase.from('ai_agent_activity').select('id,summary,created_at').order('created_at',{ascending:false}).limit(8),
     supabase.from('ai_agent_threads').select('id,title,updated_at').eq('created_by',user.id).eq('status','open').order('updated_at',{ascending:false}).limit(1).maybeSingle(),
-    getZohoConnectionStatus().catch(()=>({connected:false,status:'error',scope:null,expiresAt:null}))
+    getZohoConnectionStatus().catch(()=>({connected:false,status:'error',scope:null,expiresAt:null})),
+    getGmailConnectionStatus().catch(()=>({connected:false,status:'error',scope:null,expiresAt:null,email:null}))
   ])
 
   let initialMessages:Array<{role:'user'|'assistant';content:string}>=[]
@@ -38,6 +40,15 @@ export default async function AIVirtualAssistantPage(){
     <section className="section" style={{paddingTop:42}}><div className="container">
       <AdminBreadcrumbs items={[{label:'Admin',href:'/admin/dashboard'},{label:'AI Virtual Assistant'}]}/>
       <div className="section-head"><div><div className="eyebrow">Business Administration Agent</div><h1>Folus VA</h1><p className="muted">Administrative and operational support for customer service, sales, bookkeeping support, order coordination, inventory and daily business activities.</p></div><Link className="btn btn-outline" href="/admin/dashboard">Back to dashboard</Link></div>
+
+      <div className="admin-dashboard-panel" style={{marginBottom:18}}>
+        <div className="eyebrow">Email integration</div>
+        <h3>Gmail</h3>
+        <p><strong>{gmailStatus.connected ? 'Connected' : gmailStatus.status === 'error' ? 'Needs attention' : 'Not connected'}</strong>{gmailStatus.email ? ` · ${gmailStatus.email}` : ''}</p>
+        <p className="muted">Read-only access for Folus VA to review recent messages, unread mail and customer follow-up needs. Sending email is not enabled at this stage.</p>
+        {gmailStatus.connected ? <span className="ai-va-status">Read-only connected</span> : <a className="btn btn-primary" href="/api/admin/integrations/google/gmail/connect">Connect Gmail</a>}
+      </div>
+
       <AssistantClient initialMessages={initialMessages} initialThreadId={latestThread?.id??''} openTasks={openTasks??0} pendingApprovals={pendingApprovals??0} recentActivity={activity??[]} zohoStatus={zohoStatus}/>
       <p className="muted" style={{marginTop:18,fontSize:12}}>Signed in as {user.email}. Agent activity is restricted to authorised Folus Emporium administrators and logged for accountability.</p>
     </div></section>
