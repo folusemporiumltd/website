@@ -15,7 +15,7 @@ type IntegrationRow = {
 const PROVIDER = 'google_gmail'
 const TOKEN_URL = 'https://oauth2.googleapis.com/token'
 const GMAIL_API = 'https://gmail.googleapis.com/gmail/v1'
-const COMPOSE_SCOPE = 'https://www.googleapis.com/auth/gmail.compose'
+const SEND_SCOPE = 'https://www.googleapis.com/auth/gmail.send'
 
 async function getConnections(): Promise<IntegrationRow[]> {
   const admin = createAdminClient()
@@ -64,11 +64,11 @@ function headerValue(headers: any[], name: string) {
   return hit?.value || null
 }
 
-function hasComposeScope(scope:string|null){return String(scope||'').split(/\s+/).includes(COMPOSE_SCOPE)}
+function hasSendScope(scope:string|null){return String(scope||'').split(/\s+/).includes(SEND_SCOPE)}
 
 export async function getGmailConnectionStatus() {
   const rows = await getConnections()
-  const accounts = rows.map(row => ({ id: row.id, email: row.metadata?.email || row.account_key || null, connected: Boolean(row.status === 'active' && row.access_token), canSend:hasComposeScope(row.scope), status: row.status, scope: row.scope || null, expiresAt: row.expires_at || null }))
+  const accounts = rows.map(row => ({ id: row.id, email: row.metadata?.email || row.account_key || null, connected: Boolean(row.status === 'active' && row.access_token), canSend:hasSendScope(row.scope), status: row.status, scope: row.scope || null, expiresAt: row.expires_at || null }))
   return { connected: accounts.some(a => a.connected), status: accounts.length ? (accounts.some(a => a.status === 'error') ? 'error' : 'active') : 'disconnected', accounts, count: accounts.length, canAddMore: accounts.length < 2 }
 }
 
@@ -114,7 +114,7 @@ export async function sendApprovedGmailEmail(input:{accountEmail:string;to:strin
   if(!row)throw new Error('The selected Gmail account is not connected.')
   row=await activeConnection(row)
   if(row.status!=='active'||!row.access_token)throw new Error('The selected Gmail account is not active.')
-  if(!hasComposeScope(row.scope))throw new Error('Approved sending is not authorised for this Gmail account. Reconnect it and grant the requested Gmail permission.')
+  if(!hasSendScope(row.scope))throw new Error('Approved sending is not authorised for this Gmail account. Reconnect it and grant the requested Gmail permission.')
   const to=cleanHeader(input.to)
   const subject=cleanHeader(input.subject)
   const body=String(input.body||'').trim()
