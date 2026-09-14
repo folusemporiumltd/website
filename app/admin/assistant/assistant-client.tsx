@@ -3,12 +3,14 @@
 import { Fragment, ReactNode, useMemo, useState } from 'react'
 
 type Message = { role: 'user' | 'assistant'; content: string }
+type ZohoStatus = { connected: boolean; status: string; scope: string | null; expiresAt: string | null }
 type Props = {
   initialMessages: Message[]
   initialThreadId: string
   openTasks: number
   pendingApprovals: number
   recentActivity: Array<{ id: string; summary: string; created_at: string }>
+  zohoStatus: ZohoStatus
 }
 
 const quickActions = [
@@ -17,6 +19,7 @@ const quickActions = [
   'Which products or package sizes are low in stock?',
   'Summarise recent customer activity and returning-customer opportunities.',
   'Prepare a sales follow-up plan for today.',
+  'Review Zoho CRM leads, deals and tasks that need attention.',
   'Draft a professional customer follow-up message for an outstanding order.'
 ]
 
@@ -108,7 +111,7 @@ function MarkdownReport({content}:{content:string}){
   return <div className="ai-va-report">{blocks}</div>
 }
 
-export default function AssistantClient({ initialMessages, initialThreadId, openTasks, pendingApprovals, recentActivity }: Props) {
+export default function AssistantClient({ initialMessages, initialThreadId, openTasks, pendingApprovals, recentActivity, zohoStatus }: Props) {
   const [messages, setMessages] = useState<Message[]>(initialMessages)
   const [threadId, setThreadId] = useState(initialThreadId)
   const [input, setInput] = useState('')
@@ -174,7 +177,8 @@ export default function AssistantClient({ initialMessages, initialThreadId, open
 
     <aside className="ai-va-side">
       <article className="admin-dashboard-panel"><div className="eyebrow">Control centre</div><h3>Tasks & approvals</h3><div className="ai-va-kpis"><div><strong>{openTasks}</strong><span>Open tasks</span></div><div><strong>{pendingApprovals}</strong><span>Pending approvals</span></div></div><p className="muted">Sensitive financial, customer-facing and destructive actions should remain approval-controlled.</p></article>
-      <article className="admin-dashboard-panel"><div className="eyebrow">Agent tools</div><h3>Available now</h3><ul className="ai-va-tool-list"><li>Orders & payment records</li><li>Customer CRM data</li><li>Products & catalogue</li><li>Inventory & stock movements</li><li>Sales reports & analytics</li><li>Invoices / receipts context</li><li>Admin task & approval records</li></ul></article>
+      <article className="admin-dashboard-panel"><div className="eyebrow">CRM integration</div><h3>Zoho CRM</h3><p><strong>{zohoStatus.connected ? 'Connected' : zohoStatus.status === 'error' ? 'Needs attention' : 'Not connected'}</strong></p><p className="muted">Folus VA uses read-only access to leads, contacts, deals and tasks. CRM changes are not executed automatically.</p>{zohoStatus.connected?<button type="button" className="btn btn-outline" onClick={()=>send('Review Zoho CRM leads, deals and tasks that need attention.')} disabled={busy}>Review CRM now</button>:<a className="btn btn-primary" href="/api/admin/integrations/zoho/connect">Connect Zoho CRM</a>}</article>
+      <article className="admin-dashboard-panel"><div className="eyebrow">Agent tools</div><h3>Available now</h3><ul className="ai-va-tool-list"><li>Orders & payment records</li><li>Website customer data</li><li>Products & catalogue</li><li>Inventory & stock movements</li><li>Sales reports & analytics</li><li>Invoices / receipts context</li><li>Zoho CRM leads, contacts, deals & tasks</li><li>Admin task & approval records</li></ul></article>
       <article className="admin-dashboard-panel"><div className="eyebrow">Recent activity</div><h3>Agent audit log</h3>{recentActivity.length ? <div className="ai-va-activity">{recentActivity.map(a => <div key={a.id}><strong>{a.summary}</strong><small>{new Date(a.created_at).toLocaleString('en-NG')}</small></div>)}</div> : <p className="muted">No agent activity recorded yet.</p>}</article>
     </aside>
   </div>
