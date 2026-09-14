@@ -7,6 +7,7 @@ import { getGoogleCalendarConnectionStatus } from '@/lib/google-calendar'
 import { getGoogleDriveConnectionStatus } from '@/lib/google-drive'
 import AdminBreadcrumbs from '@/components/admin-breadcrumbs'
 import AssistantClient from './assistant-client'
+import GmailApprovalPanel from './gmail-approval-panel'
 import '../dashboard/dashboard.css'
 import './assistant.css'
 
@@ -21,11 +22,12 @@ async function requireAdmin(){
 
 export default async function AIVirtualAssistantPage(){
   const {supabase,user}=await requireAdmin()
-  const [{count:openTasks},{count:pendingApprovals},{data:activity},{data:latestThread},zohoStatus,gmailStatus,calendarStatus,driveStatus]=await Promise.all([
+  const [{count:openTasks},{count:pendingApprovals},{data:activity},{data:latestThread},{data:pendingEmailApprovals},zohoStatus,gmailStatus,calendarStatus,driveStatus]=await Promise.all([
     supabase.from('ai_agent_tasks').select('*',{count:'exact',head:true}).in('status',['open','in_progress']),
     supabase.from('ai_agent_approvals').select('*',{count:'exact',head:true}).eq('status','pending'),
     supabase.from('ai_agent_activity').select('id,summary,created_at').order('created_at',{ascending:false}).limit(8),
     supabase.from('ai_agent_threads').select('id,title,updated_at').eq('created_by',user.id).eq('status','open').order('updated_at',{ascending:false}).limit(1).maybeSingle(),
+    supabase.from('ai_agent_approvals').select('id,title,payload,status,created_at').eq('status','pending').eq('action_type','gmail_send').order('created_at',{ascending:false}).limit(20),
     getZohoConnectionStatus().catch(()=>({connected:false,status:'error',scope:null,expiresAt:null})),
     getGmailConnectionStatus().catch(()=>({connected:false,status:'error',accounts:[],count:0,canAddMore:true})),
     getGoogleCalendarConnectionStatus().catch(()=>({connected:false,status:'error',accounts:[],count:0,canAddMore:true})),
@@ -38,7 +40,7 @@ export default async function AIVirtualAssistantPage(){
     initialMessages=(messageRows??[]).filter((m:any)=>m.role==='user'||m.role==='assistant').map((m:any)=>({role:m.role as 'user'|'assistant',content:String(m.content||'')}))
   }
 
-  const accountCard=(label:string,account:any,index:number)=><div key={account.id||account.email||index} style={{padding:'12px 14px',border:'1px solid var(--line)',borderRadius:12,background:'#fcfaf8'}}><strong>{label} {index+1}</strong><div style={{marginTop:4}}>{account.email||'Connected account'}</div><small className="muted">{account.connected?'Read-only connected':account.status==='error'?'Needs attention':'Disconnected'}</small></div>
+  const accountCard=(label:string,account:any,index:number)=><div key={account.id||account.email||index} style={{padding:'12px 14px',border:'1px solid var(--line)',borderRadius:12,background:'#fcfaf8'}}><strong>{label} {index+1}</strong><div style={{marginTop:4}}>{account.email||'Connected account'}</div><small className="muted">{account.connected?(label==='Gmail'&&account.canSend?'Connected · approval-gated sending enabled':'Read-only connected'):account.status==='error'?'Needs attention':'Disconnected'}</small></div>
 
   return <main className="admin-dashboard-shell">
     <div className="topbar"><div className="container"><span>Folus Emporium Administration</span><span>AI Virtual Assistant</span></div></div>
@@ -49,10 +51,12 @@ export default async function AIVirtualAssistantPage(){
 
       <div className="admin-dashboard-panel" style={{marginBottom:18}}>
         <div className="eyebrow">Email integration</div><h3>Gmail accounts</h3>
-        <p className="muted">Connect up to two Gmail inboxes. Folus VA reads each inbox separately and identifies the source account in its analysis. Sending, replying, archiving and deleting remain disabled.</p>
+        <p className="muted">Connect up to two Gmail inboxes. Folus VA reads each inbox separately. Sending is available only through the explicit draft-review-approval workflow below.</p>
         <div style={{display:'grid',gap:10,margin:'14px 0'}}>{(gmailStatus.accounts||[]).map((a:any,i:number)=>accountCard('Gmail',a,i))}{gmailStatus.count===0?<p><strong>No Gmail account connected yet.</strong></p>:null}</div>
         {gmailStatus.canAddMore?<a className="btn btn-primary" href="/api/admin/integrations/google/gmail/connect">{gmailStatus.count>0?'Add another Gmail account':'Connect Gmail'}</a>:<span className="ai-va-status">2 of 2 Gmail accounts connected</span>}
       </div>
+
+      <GmailApprovalPanel accounts={(gmailStatus.accounts||[]) as any} initialApprovals={(pendingEmailApprovals||[]) as any} threadId={latestThread?.id??''}/>
 
       <div className="admin-dashboard-panel" style={{marginBottom:18}}>
         <div className="eyebrow">Calendar integration</div><h3>Google Calendar accounts</h3>
