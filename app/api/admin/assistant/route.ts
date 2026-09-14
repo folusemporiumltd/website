@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { fetchZohoCrmSnapshot } from '@/lib/zoho-crm'
+import { fetchGmailSnapshot } from '@/lib/google-gmail'
 
 const AGENT_INSTRUCTIONS = `You are Folus VA, the Virtual Assistant - Business Administration for Folus Emporium Ltd.
 Your role is to support management with daily operations across customer service, sales support, accounting/financial support, administration, inventory and digital business administration.
@@ -12,9 +13,10 @@ Core responsibilities:
 - Administration: tasks, reminders, meetings, records, internal coordination, data entry and management reporting.
 - Digital operations: product/catalogue support, customer feedback, spreadsheets/forms and online communication support.
 - CRM support: when Zoho CRM data is available, use it to review leads, contacts, deals and tasks. Treat Zoho CRM as a separate source from website customer/order data and do not silently merge records unless a clear matching identifier supports it.
+- Email support: when Gmail data is available, use recent messages and unread-mail information to identify enquiries, customer follow-up needs, operational requests and items requiring management attention. Gmail access is read-only: never claim an email was sent, replied to, archived, labelled or changed.
 
 Operating rules:
-1. Use only the Folus Emporium business data supplied in BUSINESS DATA. Do not invent orders, customers, payments, stock, revenue, CRM records or personal information.
+1. Use only the Folus Emporium business data supplied in BUSINESS DATA. Do not invent orders, customers, payments, stock, revenue, CRM records, emails or personal information.
 2. Clearly distinguish facts from recommendations or drafts.
 3. Never claim to have sent an email, changed an order, refunded money, changed a price, edited CRM data, deleted data or contacted a customer unless the system explicitly confirms execution.
 4. Sensitive actions (customer-facing sends, refunds, cancellations, payment-status changes, price changes, CRM writes, bulk campaigns, destructive changes, admin-role changes) require management approval.
@@ -62,7 +64,7 @@ export async function POST(request:Request){
 
   await supabase.from('ai_agent_messages').insert({thread_id:threadId,role:'user',content:message})
 
-  const [ordersResult,customersResult,productsResult,variantsResult,analyticsResult,movementsResult,reportsResult,zohoResult]=await Promise.all([
+  const [ordersResult,customersResult,productsResult,variantsResult,analyticsResult,movementsResult,reportsResult,zohoResult,gmailResult]=await Promise.all([
     supabase.rpc('list_admin_orders'),
     supabase.rpc('list_admin_customer_profiles'),
     supabase.rpc('list_admin_catalogue_products'),
@@ -70,7 +72,8 @@ export async function POST(request:Request){
     supabase.rpc('get_admin_sales_analytics'),
     supabase.rpc('list_admin_stock_movements',{p_limit:20}),
     supabase.rpc('get_admin_management_reports',{p_from:new Date(Date.now()-30*86400000).toISOString(),p_to:new Date().toISOString()}),
-    fetchZohoCrmSnapshot().catch((error:any)=>({connected:false,error:error instanceof Error?error.message:'Zoho CRM unavailable.',leads:[],contacts:[],deals:[],tasks:[]}))
+    fetchZohoCrmSnapshot().catch((error:any)=>({connected:false,error:error instanceof Error?error.message:'Zoho CRM unavailable.',leads:[],contacts:[],deals:[],tasks:[]})),
+    fetchGmailSnapshot().catch((error:any)=>({connected:false,error:error instanceof Error?error.message:'Gmail unavailable.',email:null,unread_count:0,recent_messages:[]}))
   ])
 
   const compactOrders=(ordersResult.data??[]).slice(0,40).map((o:any)=>({
@@ -96,7 +99,8 @@ export async function POST(request:Request){
     products:compactProducts,
     variants:compactVariants,
     recent_stock_movements:movementsResult.data??[],
-    zoho_crm:zohoResult
+    zoho_crm:zohoResult,
+    gmail:gmailResult
   }
 
   const {data:history}=await supabase.from('ai_agent_messages').select('role,content').eq('thread_id',threadId).order('created_at',{ascending:true}).limit(12)
@@ -134,7 +138,7 @@ export async function POST(request:Request){
   await Promise.all([
     supabase.from('ai_agent_messages').insert({thread_id:threadId,role:'assistant',content:reply}),
     supabase.from('ai_agent_threads').update({updated_at:new Date().toISOString()}).eq('id',threadId),
-    supabase.from('ai_agent_activity').insert({actor_user_id:user.id,thread_id:threadId,event_type:'agent_response',summary:'Folus VA completed an administrative request.',metadata:{model:process.env.OPENAI_AGENT_MODEL||'gpt-5.6-luna',zoho_connected:Boolean((zohoResult as any)?.connected)}})
+    supabase.from('ai_agent_activity').insert({actor_user_id:user.id,thread_id:threadId,event_type:'agent_response',summary:'Folus VA completed an administrative request.',metadata:{model:process.env.OPENAI_AGENT_MODEL||'gpt-5.6-luna',zoho_connected:Boolean((zohoResult as any)?.connected),gmail_connected:Boolean((gmailResult as any)?.connected)}})
   ])
 
   return NextResponse.json({reply,threadId})
