@@ -13,7 +13,7 @@ Core responsibilities:
 - Administration: tasks, reminders, meetings, records, internal coordination, data entry and management reporting.
 - Digital operations: product/catalogue support, customer feedback, spreadsheets/forms and online communication support.
 - CRM support: when Zoho CRM data is available, use it to review leads, contacts, deals and tasks. Treat Zoho CRM as a separate source from website customer/order data and do not silently merge records unless a clear matching identifier supports it.
-- Email support: when Gmail data is available, use recent messages and unread-mail information to identify enquiries, customer follow-up needs, operational requests and items requiring management attention. Gmail access is read-only: never claim an email was sent, replied to, archived, labelled or changed.
+- Email support: Gmail may contain up to two separately connected inboxes. Always preserve the source Gmail account when discussing a message, unread count, enquiry or follow-up. Never silently merge the two inboxes. Gmail access is read-only: never claim an email was sent, replied to, archived, labelled or changed.
 
 Operating rules:
 1. Use only the Folus Emporium business data supplied in BUSINESS DATA. Do not invent orders, customers, payments, stock, revenue, CRM records, emails or personal information.
@@ -30,11 +30,7 @@ Operating rules:
 function extractText(response:any){
   if(typeof response?.output_text==='string'&&response.output_text.trim())return response.output_text.trim()
   const parts:string[]=[]
-  for(const item of response?.output??[]){
-    for(const content of item?.content??[]){
-      if(typeof content?.text==='string')parts.push(content.text)
-    }
-  }
+  for(const item of response?.output??[]){for(const content of item?.content??[]){if(typeof content?.text==='string')parts.push(content.text)}}
   return parts.join('\n').trim()
 }
 
@@ -65,81 +61,32 @@ export async function POST(request:Request){
   await supabase.from('ai_agent_messages').insert({thread_id:threadId,role:'user',content:message})
 
   const [ordersResult,customersResult,productsResult,variantsResult,analyticsResult,movementsResult,reportsResult,zohoResult,gmailResult]=await Promise.all([
-    supabase.rpc('list_admin_orders'),
-    supabase.rpc('list_admin_customer_profiles'),
-    supabase.rpc('list_admin_catalogue_products'),
-    supabase.rpc('list_admin_catalogue_variants'),
-    supabase.rpc('get_admin_sales_analytics'),
-    supabase.rpc('list_admin_stock_movements',{p_limit:20}),
-    supabase.rpc('get_admin_management_reports',{p_from:new Date(Date.now()-30*86400000).toISOString(),p_to:new Date().toISOString()}),
+    supabase.rpc('list_admin_orders'),supabase.rpc('list_admin_customer_profiles'),supabase.rpc('list_admin_catalogue_products'),supabase.rpc('list_admin_catalogue_variants'),supabase.rpc('get_admin_sales_analytics'),supabase.rpc('list_admin_stock_movements',{p_limit:20}),supabase.rpc('get_admin_management_reports',{p_from:new Date(Date.now()-30*86400000).toISOString(),p_to:new Date().toISOString()}),
     fetchZohoCrmSnapshot().catch((error:any)=>({connected:false,error:error instanceof Error?error.message:'Zoho CRM unavailable.',leads:[],contacts:[],deals:[],tasks:[]})),
-    fetchGmailSnapshot().catch((error:any)=>({connected:false,error:error instanceof Error?error.message:'Gmail unavailable.',email:null,unread_count:0,recent_messages:[]}))
+    fetchGmailSnapshot().catch((error:any)=>({connected:false,error:error instanceof Error?error.message:'Gmail unavailable.',accounts:[],total_unread_count:0}))
   ])
 
-  const compactOrders=(ordersResult.data??[]).slice(0,40).map((o:any)=>({
-    reference:o.payment_reference||o.id,
-    customer:o.customer_name||o.email||'Customer',
-    status:o.status,payment_status:o.payment_status,payment_method:o.payment_method,
-    total:o.total,delivery_zone:o.delivery_zone,created_at:o.created_at,
-    items:Array.isArray(o.items)?o.items.slice(0,8):[]
-  }))
-  const compactCustomers=(customersResult.data??[]).slice(0,60).map((c:any)=>({
-    full_name:c.full_name,email:c.email,role:c.role,total_orders:c.total_orders,
-    paid_orders:c.paid_orders,total_spend:c.total_spend,last_order_at:c.last_order_at
-  }))
+  const compactOrders=(ordersResult.data??[]).slice(0,40).map((o:any)=>({reference:o.payment_reference||o.id,customer:o.customer_name||o.email||'Customer',status:o.status,payment_status:o.payment_status,payment_method:o.payment_method,total:o.total,delivery_zone:o.delivery_zone,created_at:o.created_at,items:Array.isArray(o.items)?o.items.slice(0,8):[]}))
+  const compactCustomers=(customersResult.data??[]).slice(0,60).map((c:any)=>({full_name:c.full_name,email:c.email,role:c.role,total_orders:c.total_orders,paid_orders:c.paid_orders,total_spend:c.total_spend,last_order_at:c.last_order_at}))
   const compactProducts=(productsResult.data??[]).map((p:any)=>({id:p.id,name:p.name,price:p.price,stock_quantity:p.stock_quantity,featured:p.featured,is_active:p.is_active,default_size_grams:p.default_size_grams}))
   const compactVariants=(variantsResult.data??[]).map((v:any)=>({product_id:v.product_id,size_label:v.size_label,price:v.price,stock_quantity:v.stock_quantity,reorder_threshold:v.reorder_threshold,is_active:v.is_active}))
 
-  const businessData={
-    generated_at:new Date().toISOString(),
-    analytics:analyticsResult.data??{},
-    management_report_last_30_days:reportsResult.data??{},
-    recent_orders:compactOrders,
-    customers:compactCustomers,
-    products:compactProducts,
-    variants:compactVariants,
-    recent_stock_movements:movementsResult.data??[],
-    zoho_crm:zohoResult,
-    gmail:gmailResult
-  }
-
+  const businessData={generated_at:new Date().toISOString(),analytics:analyticsResult.data??{},management_report_last_30_days:reportsResult.data??{},recent_orders:compactOrders,customers:compactCustomers,products:compactProducts,variants:compactVariants,recent_stock_movements:movementsResult.data??[],zoho_crm:zohoResult,gmail:gmailResult}
   const {data:history}=await supabase.from('ai_agent_messages').select('role,content').eq('thread_id',threadId).order('created_at',{ascending:true}).limit(12)
   const historyText=(history??[]).map((m:any)=>`${m.role.toUpperCase()}: ${m.content}`).join('\n\n')
 
   const apiKey=process.env.OPENAI_API_KEY
   if(!apiKey){
     const reply='The Folus VA workspace and business-data tools are connected, but the AI model runtime is not yet authorised on the website. Add the server-side OPENAI_API_KEY environment variable in Vercel to activate natural-language reasoning. No customer or business data has been sent to an external model.'
-    await Promise.all([
-      supabase.from('ai_agent_messages').insert({thread_id:threadId,role:'assistant',content:reply}),
-      supabase.from('ai_agent_activity').insert({actor_user_id:user.id,thread_id:threadId,event_type:'agent_configuration_required',summary:'Folus VA requested OpenAI API configuration.'})
-    ])
+    await Promise.all([supabase.from('ai_agent_messages').insert({thread_id:threadId,role:'assistant',content:reply}),supabase.from('ai_agent_activity').insert({actor_user_id:user.id,thread_id:threadId,event_type:'agent_configuration_required',summary:'Folus VA requested OpenAI API configuration.'})])
     return NextResponse.json({reply,threadId,configurationRequired:true})
   }
 
-  const aiResponse=await fetch('https://api.openai.com/v1/responses',{
-    method:'POST',
-    headers:{'Authorization':`Bearer ${apiKey}`,'Content-Type':'application/json'},
-    body:JSON.stringify({
-      model:process.env.OPENAI_AGENT_MODEL||'gpt-5.6-luna',
-      store:false,
-      instructions:AGENT_INSTRUCTIONS,
-      input:`CONVERSATION\n${historyText}\n\nCURRENT REQUEST\n${message}\n\nBUSINESS DATA\n${JSON.stringify(businessData)}`
-    })
-  })
-
+  const aiResponse=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{'Authorization':`Bearer ${apiKey}`,'Content-Type':'application/json'},body:JSON.stringify({model:process.env.OPENAI_AGENT_MODEL||'gpt-5.6-luna',store:false,instructions:AGENT_INSTRUCTIONS,input:`CONVERSATION\n${historyText}\n\nCURRENT REQUEST\n${message}\n\nBUSINESS DATA\n${JSON.stringify(businessData)}`})})
   const result=await aiResponse.json()
-  if(!aiResponse.ok){
-    const detail=result?.error?.message||'AI model request failed.'
-    await supabase.from('ai_agent_activity').insert({actor_user_id:user.id,thread_id:threadId,event_type:'agent_error',summary:'Folus VA model request failed.',metadata:{detail}})
-    return NextResponse.json({error:`Folus VA could not complete the request: ${detail}`},{status:502})
-  }
+  if(!aiResponse.ok){const detail=result?.error?.message||'AI model request failed.';await supabase.from('ai_agent_activity').insert({actor_user_id:user.id,thread_id:threadId,event_type:'agent_error',summary:'Folus VA model request failed.',metadata:{detail}});return NextResponse.json({error:`Folus VA could not complete the request: ${detail}`},{status:502})}
 
   const reply=extractText(result)||'I could not generate a useful response from the available business data.'
-  await Promise.all([
-    supabase.from('ai_agent_messages').insert({thread_id:threadId,role:'assistant',content:reply}),
-    supabase.from('ai_agent_threads').update({updated_at:new Date().toISOString()}).eq('id',threadId),
-    supabase.from('ai_agent_activity').insert({actor_user_id:user.id,thread_id:threadId,event_type:'agent_response',summary:'Folus VA completed an administrative request.',metadata:{model:process.env.OPENAI_AGENT_MODEL||'gpt-5.6-luna',zoho_connected:Boolean((zohoResult as any)?.connected),gmail_connected:Boolean((gmailResult as any)?.connected)}})
-  ])
-
+  await Promise.all([supabase.from('ai_agent_messages').insert({thread_id:threadId,role:'assistant',content:reply}),supabase.from('ai_agent_threads').update({updated_at:new Date().toISOString()}).eq('id',threadId),supabase.from('ai_agent_activity').insert({actor_user_id:user.id,thread_id:threadId,event_type:'agent_response',summary:'Folus VA completed an administrative request.',metadata:{model:process.env.OPENAI_AGENT_MODEL||'gpt-5.6-luna',zoho_connected:Boolean((zohoResult as any)?.connected),gmail_connected:Boolean((gmailResult as any)?.connected),gmail_accounts:Array.isArray((gmailResult as any)?.accounts)?(gmailResult as any).accounts.length:0}})])
   return NextResponse.json({reply,threadId})
 }
