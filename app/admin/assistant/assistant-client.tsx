@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { Fragment, ReactNode, useMemo, useState } from 'react'
 
 type Message = { role: 'user' | 'assistant'; content: string }
 type Props = {
@@ -19,6 +19,94 @@ const quickActions = [
   'Prepare a sales follow-up plan for today.',
   'Draft a professional customer follow-up message for an outstanding order.'
 ]
+
+function normaliseMarkdown(value:string){
+  return value
+    .replace(/&#x20;/gi,' ')
+    .replace(/&nbsp;/gi,' ')
+    .replace(/\\([#*_|`>\-])/g,'$1')
+    .replace(/\r\n/g,'\n')
+}
+
+function inlineMarkdown(text:string):ReactNode[]{
+  const parts:ReactNode[]=[]
+  const pattern=/(\*\*[^*]+\*\*|`[^`]+`|\[[^\]]+\]\(https?:\/\/[^)]+\))/g
+  let last=0
+  let match:RegExpExecArray|null
+  let key=0
+  while((match=pattern.exec(text))!==null){
+    if(match.index>last)parts.push(text.slice(last,match.index))
+    const token=match[0]
+    if(token.startsWith('**'))parts.push(<strong key={key++}>{token.slice(2,-2)}</strong>)
+    else if(token.startsWith('`'))parts.push(<code key={key++}>{token.slice(1,-1)}</code>)
+    else{
+      const link=token.match(/^\[([^\]]+)\]\((https?:\/\/[^)]+)\)$/)
+      if(link)parts.push(<a key={key++} href={link[2]} target="_blank" rel="noreferrer">{link[1]}</a>)
+      else parts.push(token)
+    }
+    last=pattern.lastIndex
+  }
+  if(last<text.length)parts.push(text.slice(last))
+  return parts
+}
+
+function isTableDivider(line:string){
+  const cells=line.trim().replace(/^\||\|$/g,'').split('|').map(c=>c.trim())
+  return cells.length>1&&cells.every(c=>/^:?-{3,}:?$/.test(c))
+}
+
+function tableCells(line:string){return line.trim().replace(/^\||\|$/g,'').split('|').map(c=>c.trim())}
+
+function MarkdownReport({content}:{content:string}){
+  const lines=normaliseMarkdown(content).split('\n')
+  const blocks:ReactNode[]=[]
+  let i=0
+  let key=0
+  while(i<lines.length){
+    const raw=lines[i]
+    const line=raw.trim()
+    if(!line){i++;continue}
+
+    const heading=line.match(/^(#{1,4})\s+(.+)$/)
+    if(heading){
+      const level=Math.min(4,heading[1].length)
+      const text=heading[2]
+      if(level===1)blocks.push(<h2 key={key++}>{inlineMarkdown(text)}</h2>)
+      else if(level===2)blocks.push(<h3 key={key++}>{inlineMarkdown(text)}</h3>)
+      else blocks.push(<h4 key={key++}>{inlineMarkdown(text)}</h4>)
+      i++;continue
+    }
+
+    if(line.includes('|')&&i+1<lines.length&&isTableDivider(lines[i+1])){
+      const headers=tableCells(line);i+=2
+      const rows:string[][]=[]
+      while(i<lines.length&&lines[i].trim().includes('|')&&lines[i].trim()){
+        rows.push(tableCells(lines[i]));i++
+      }
+      blocks.push(<div className="ai-va-table-wrap" key={key++}><table className="ai-va-report-table"><thead><tr>{headers.map((h,j)=><th key={j}>{inlineMarkdown(h)}</th>)}</tr></thead><tbody>{rows.map((row,r)=><tr key={r}>{headers.map((_,c)=><td key={c}>{inlineMarkdown(row[c]??'')}</td>)}</tr>)}</tbody></table></div>)
+      continue
+    }
+
+    if(/^[-*]\s+/.test(line)){
+      const items:string[]=[]
+      while(i<lines.length&&/^[-*]\s+/.test(lines[i].trim())){items.push(lines[i].trim().replace(/^[-*]\s+/,''));i++}
+      blocks.push(<ul key={key++}>{items.map((item,j)=><li key={j}>{inlineMarkdown(item)}</li>)}</ul>)
+      continue
+    }
+
+    if(/^\d+[.)]\s+/.test(line)){
+      const items:string[]=[]
+      while(i<lines.length&&/^\d+[.)]\s+/.test(lines[i].trim())){items.push(lines[i].trim().replace(/^\d+[.)]\s+/,''));i++}
+      blocks.push(<ol key={key++}>{items.map((item,j)=><li key={j}>{inlineMarkdown(item)}</li>)}</ol>)
+      continue
+    }
+
+    const paragraph:string[]=[line];i++
+    while(i<lines.length&&lines[i].trim()&&!/^(#{1,4})\s+/.test(lines[i].trim())&&!/^[-*]\s+/.test(lines[i].trim())&&!/^\d+[.)]\s+/.test(lines[i].trim())&&!(lines[i].includes('|')&&i+1<lines.length&&isTableDivider(lines[i+1]))){paragraph.push(lines[i].trim());i++}
+    blocks.push(<p key={key++}>{paragraph.map((p,j)=><Fragment key={j}>{j>0?<br/>:null}{inlineMarkdown(p)}</Fragment>)}</p>)
+  }
+  return <div className="ai-va-report">{blocks}</div>
+}
 
 export default function AssistantClient({ initialMessages, initialThreadId, openTasks, pendingApprovals, recentActivity }: Props) {
   const [messages, setMessages] = useState<Message[]>(initialMessages)
@@ -73,7 +161,7 @@ export default function AssistantClient({ initialMessages, initialThreadId, open
 
       <div className="ai-va-messages" aria-live="polite">
         {messages.length === 0 ? <div className="ai-va-empty"><strong>Folus VA is ready.</strong><p>Ask for a management brief, order follow-up, sales analysis, customer summary, inventory check or administrative support.</p></div> : null}
-        {messages.map((m, i) => <div key={i} className={`ai-va-message ${m.role}`}><span>{m.role === 'user' ? 'You' : 'Folus VA'}</span><p>{m.content}</p></div>)}
+        {messages.map((m, i) => <div key={i} className={`ai-va-message ${m.role}`}><span>{m.role === 'user' ? 'You' : 'Folus VA'}</span>{m.role==='assistant'?<MarkdownReport content={m.content}/>:<p>{m.content}</p>}</div>)}
         {busy ? <div className="ai-va-message assistant"><span>Folus VA</span><p>Reviewing current business data…</p></div> : null}
       </div>
 
