@@ -111,6 +111,64 @@ function MarkdownReport({content}:{content:string}){
   return <div className="ai-va-report">{blocks}</div>
 }
 
+function safeExportName(index:number){
+  const date=new Date().toISOString().slice(0,10)
+  return `folus-va-report-${date}-${index+1}`
+}
+
+function downloadBlob(content:string,type:string,filename:string){
+  const blob=new Blob([content],{type})
+  const url=URL.createObjectURL(blob)
+  const link=document.createElement('a')
+  link.href=url
+  link.download=filename
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  setTimeout(()=>URL.revokeObjectURL(url),1000)
+}
+
+function plainTextFromMarkdown(content:string){
+  return normaliseMarkdown(content)
+    .replace(/^#{1,6}\s+/gm,'')
+    .replace(/\*\*([^*]+)\*\*/g,'$1')
+    .replace(/`([^`]+)`/g,'$1')
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,'$1 ($2)')
+}
+
+function exportText(content:string,index:number){
+  const title='Folus Emporium Ltd\nFolus VA - Business Administration Report\nNature’s Goodness, Purely Yours.\n\n'
+  downloadBlob(title+plainTextFromMarkdown(content),'text/plain;charset=utf-8',`${safeExportName(index)}.txt`)
+}
+
+function exportWord(content:string,index:number){
+  const escaped=normaliseMarkdown(content)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/^####\s+(.+)$/gm,'<h4>$1</h4>')
+    .replace(/^###\s+(.+)$/gm,'<h3>$1</h3>')
+    .replace(/^##\s+(.+)$/gm,'<h2>$1</h2>')
+    .replace(/^#\s+(.+)$/gm,'<h1>$1</h1>')
+    .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
+    .replace(/\n/g,'<br>')
+  const html=`<!doctype html><html><head><meta charset="utf-8"><style>body{font-family:Arial,sans-serif;color:#2f2926;line-height:1.55}h1,h2,h3,h4{color:#6f1735}header{text-align:center;border-bottom:2px solid #c6a15b;padding-bottom:14px;margin-bottom:22px}.tagline{color:#6f1735;font-style:italic}</style></head><body><header><h1>FOLUS EMPORIUM</h1><div class="tagline">Nature’s Goodness, Purely Yours.</div><p>Folus VA · Business Administration Report</p></header>${escaped}</body></html>`
+  downloadBlob('\ufeff'+html,'application/msword',`${safeExportName(index)}.doc`)
+}
+
+function savePdf(content:string,index:number){
+  const win=window.open('','_blank','noopener,noreferrer')
+  if(!win)return
+  const body=normaliseMarkdown(content)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/^####\s+(.+)$/gm,'<h4>$1</h4>')
+    .replace(/^###\s+(.+)$/gm,'<h3>$1</h3>')
+    .replace(/^##\s+(.+)$/gm,'<h2>$1</h2>')
+    .replace(/^#\s+(.+)$/gm,'<h1>$1</h1>')
+    .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
+    .replace(/\n/g,'<br>')
+  win.document.write(`<!doctype html><html><head><title>${safeExportName(index)}</title><meta charset="utf-8"><style>@page{margin:18mm}body{font-family:Arial,sans-serif;color:#2f2926;line-height:1.55;font-size:12pt}h1,h2,h3,h4{color:#6f1735;page-break-after:avoid}header{text-align:center;border-bottom:2px solid #c6a15b;padding-bottom:14px;margin-bottom:22px}.tagline{color:#6f1735;font-style:italic}.note{font-size:9pt;color:#777;margin-top:28px}</style></head><body><header><h1>FOLUS EMPORIUM</h1><div class="tagline">Nature’s Goodness, Purely Yours.</div><p>Folus VA · Business Administration Report</p></header>${body}<p class="note">Generated from Folus Emporium Admin · ${new Date().toLocaleString('en-NG')}</p><script>window.onload=()=>{window.print()}<\/script></body></html>`)
+  win.document.close()
+}
+
 export default function AssistantClient({ initialMessages, initialThreadId, openTasks, pendingApprovals, recentActivity, zohoStatus }: Props) {
   const [messages, setMessages] = useState<Message[]>(initialMessages)
   const [threadId, setThreadId] = useState(initialThreadId)
@@ -164,7 +222,7 @@ export default function AssistantClient({ initialMessages, initialThreadId, open
 
       <div className="ai-va-messages" aria-live="polite">
         {messages.length === 0 ? <div className="ai-va-empty"><strong>Folus VA is ready.</strong><p>Ask for a management brief, order follow-up, sales analysis, customer summary, inventory check or administrative support.</p></div> : null}
-        {messages.map((m, i) => <div key={i} className={`ai-va-message ${m.role}`}><span>{m.role === 'user' ? 'You' : 'Folus VA'}</span>{m.role==='assistant'?<MarkdownReport content={m.content}/>:<p>{m.content}</p>}</div>)}
+        {messages.map((m, i) => <div key={i} className={`ai-va-message ${m.role}`}><span>{m.role === 'user' ? 'You' : 'Folus VA'}</span>{m.role==='assistant'?<><MarkdownReport content={m.content}/><div className="ai-va-export-actions"><button type="button" onClick={()=>savePdf(m.content,i)}>Save PDF</button><button type="button" onClick={()=>exportWord(m.content,i)}>Export Word</button><button type="button" onClick={()=>exportText(m.content,i)}>Export Text</button></div></>:<p>{m.content}</p>}</div>)}
         {busy ? <div className="ai-va-message assistant"><span>Folus VA</span><p>Reviewing current business data…</p></div> : null}
       </div>
 
