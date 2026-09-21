@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server'
 import { createCatalogueClient, createClient } from '@/lib/supabase/server'
+import { SITE_KEY } from '@/lib/site'
 
 export const maxDuration = 30
 
 type ChatMessage = { role: 'user' | 'assistant'; content: string }
 type CartLine = { id: string; name: string; quantity: number; sizeLabel?: string; price: number }
 const WHATSAPP_URL = 'https://wa.me/2349168157255?text=Hello%20Folus%20Emporium%2C%20Folus%20VA%20referred%20me%20to%20a%20live%20agent.'
-const COMPANY_CONTEXT = `Folus Emporium Ltd is a Nigerian food and lifestyle business based in Ibadan, Oyo State, serving homes and businesses across Nigeria. Its tagline is “Nature’s Goodness, Purely Yours.” The business offers carefully sourced, processed and packaged products, kitchen and home solutions, event services, logistics and commerce, fashion/textile services, and bridal consulting. Store support is available by WhatsApp on +234 916 815 7255 and email at folusemporium@gmail.com. Payment is completed only on the website's secure checkout. Never ask for a card number, PIN, CVV, OTP or password.`
+const COMPANY_CONTEXT = `Folus Emporium Ltd is a Nigerian food and lifestyle company based in Ibadan, Oyo State, serving customers across Nigeria. Folus Emporium offers agro and packaged food products, events and drinks services, kitchen and home solutions, logistics and commerce, fashion and textile services, bridal consulting, souvenirs and customised gifts. Folus Emporium Stores carries kitchen and home appliances, gifts, food and beverages, hygiene and personal care, health and beauty, fashion and accessories. The company tagline is “Curating Excellence for Life’s Finest Moments.” Support is available by WhatsApp on +234 916 815 7255 and email at folusemporium@gmail.com. Payment is completed only on the website's secure checkout. Never ask for a card number, PIN, CVV, OTP or password.`
 
 function textFromResponse(response: any) {
   if (typeof response?.output_text === 'string') return response.output_text.trim()
@@ -32,7 +33,7 @@ export async function POST(request: Request) {
 
   const catalogue = await createCatalogueClient()
   const [{ data: productsData }, { data: variantsData }] = await Promise.all([
-    catalogue.from('products').select('id,name,slug,description,image_url,price,default_size_grams').eq('is_active', true).order('name'),
+    catalogue.from('products').select('id,name,slug,description,image_url,price,default_size_grams').eq('site_key', SITE_KEY).eq('is_active', true).order('name'),
     catalogue.from('product_variants').select('id,product_id,size_grams,size_label,price,stock_quantity').eq('is_active', true).gt('price', 0).order('size_grams'),
   ])
   const products = productsData ?? []

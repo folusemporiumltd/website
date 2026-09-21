@@ -22,19 +22,26 @@ export default function FolusVA() {
   const [offerAgent, setOfferAgent] = useState(false)
   const [error, setError] = useState('')
   const endRef = useRef<HTMLDivElement>(null)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages, busy, products, needsRegistration])
-  useEffect(() => () => window.speechSynthesis?.cancel(), [])
+  useEffect(() => () => { audioRef.current?.pause(); window.speechSynthesis?.cancel() }, [])
 
-  function speak(text: string) {
-    if (!voiceOn || !('speechSynthesis' in window)) return
-    window.speechSynthesis.cancel()
-    const utterance = new SpeechSynthesisUtterance(text.replace(/[₦]/g, 'naira '))
-    const voices = window.speechSynthesis.getVoices()
-    const femaleHints = /female|zira|leah|hazel|susan|aria|samantha|victoria|moira|tessa/i
-    const voice = voices.find(item => /^en-(NG|ZA)$/i.test(item.lang) && femaleHints.test(item.name)) || voices.find(item => /^en-(NG|ZA)$/i.test(item.lang)) || voices.find(item => /^en-GB$/i.test(item.lang) && femaleHints.test(item.name)) || voices.find(item => /^en/i.test(item.lang) && femaleHints.test(item.name))
-    if (voice) utterance.voice = voice
-    utterance.lang = voice?.lang || 'en-NG'; utterance.rate = 0.94
-    window.speechSynthesis.speak(utterance)
+  async function speak(text: string) {
+    if (!voiceOn) return
+    audioRef.current?.pause()
+    try {
+      const response = await fetch('/api/folus-va/speech', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) })
+      if (!response.ok) throw new Error('Natural voice unavailable')
+      const url = URL.createObjectURL(await response.blob())
+      const audio = new Audio(url); audioRef.current = audio
+      audio.onended = () => URL.revokeObjectURL(url)
+      await audio.play()
+    } catch {
+      if (!('speechSynthesis' in window)) return
+      const utterance = new SpeechSynthesisUtterance(text.replace(/[₦]/g, ' naira '))
+      utterance.lang = 'en-NG'; utterance.rate = 0.94
+      window.speechSynthesis.speak(utterance)
+    }
   }
 
   async function send(text?: string) {
@@ -49,7 +56,7 @@ export default function FolusVA() {
       const reply = String(data.reply || 'How else may I help?')
       setMessages(current => [...current, { role: 'assistant', content: reply }]); setProducts(Array.isArray(data.products) ? data.products : []); setNeedsRegistration(Boolean(data.needsRegistration)); setCheckoutReady(Boolean(data.checkoutRequested && data.signedIn)); setOfferAgent(Boolean(data.offerLiveAgent))
       for (const item of data.cartAdds ?? []) addItem({ id: item.id, name: item.name, slug: item.slug, image_url: item.image_url, price: item.price, variantId: item.variantId, sizeGrams: item.sizeGrams, sizeLabel: item.sizeLabel }, item.quantity)
-      speak(reply)
+      void speak(reply)
     } catch (reason) { setError(reason instanceof Error ? reason.message : 'Folus VA could not respond just now.'); setOfferAgent(true) } finally { setBusy(false) }
   }
 
@@ -75,7 +82,7 @@ export default function FolusVA() {
   return <>
     <button className="folus-va-launcher" type="button" onClick={() => setOpen(true)} aria-label="Talk to Folus VA"><span aria-hidden="true">◉</span><b>Talk to Folus VA</b></button>
     {open ? <section className="folus-va-panel" role="dialog" aria-modal="true" aria-label="Folus VA shopping assistant">
-      <header><div><strong>Folus VA</strong><small>Voice Shopping Assistant</small></div><div className="folus-va-head-actions"><button type="button" onClick={() => setVoiceOn(value => !value)} aria-label={voiceOn ? 'Mute voice' : 'Turn on voice'}>{voiceOn ? '🔊' : '🔇'}</button><button type="button" onClick={() => { window.speechSynthesis?.cancel(); setOpen(false) }} aria-label="Close Folus VA">×</button></div></header>
+      <header><div><strong>Folus VA</strong><small>Nigerian Voice Shopping Assistant</small></div><div className="folus-va-head-actions"><button type="button" onClick={() => { audioRef.current?.pause(); setVoiceOn(value => !value) }} aria-label={voiceOn ? 'Mute voice' : 'Turn on voice'}>{voiceOn ? '🔊' : '🔇'}</button><button type="button" onClick={() => { audioRef.current?.pause(); window.speechSynthesis?.cancel(); setOpen(false) }} aria-label="Close Folus VA">×</button></div></header>
       <div className="folus-va-messages" aria-live="polite">
         {messages.map((message, index) => <div className={`folus-va-bubble ${message.role}`} key={index}><span>{message.role === 'assistant' ? 'Folus VA' : 'You'}</span><p>{message.content}</p></div>)}
         {busy ? <div className="folus-va-bubble assistant"><span>Folus VA</span><p>Let me check that for you…</p></div> : null}
@@ -87,7 +94,7 @@ export default function FolusVA() {
       </div>
       <div className="folus-va-quick"><button type="button" onClick={() => send('What products do you have?')} disabled={busy}>Products</button><button type="button" onClick={() => send('Help me make an order')} disabled={busy}>Make an order</button><button type="button" onClick={() => send('I want to speak with a live agent')} disabled={busy}>Live agent</button></div>
       <form className="folus-va-composer" onSubmit={event => { event.preventDefault(); void send() }}><button className={listening ? 'listening' : ''} type="button" onClick={startListening} disabled={busy} aria-label="Speak to Folus VA">🎙</button><input value={input} onChange={event => setInput(event.target.value)} placeholder="Speak or type your message…" maxLength={1500}/><button type="submit" disabled={busy || !input.trim()} aria-label="Send message">➤</button></form>
-      <footer>Voice availability depends on your browser. Never share your password, PIN or OTP.</footer>
+      <footer>Folus VA uses an AI-generated Nigerian female voice. Never share your password, PIN or OTP.</footer>
     </section> : null}
   </>
 }

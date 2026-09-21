@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { createCatalogueClient } from '@/lib/supabase/server'
 import CartLink from '@/components/cart-link'
 import ProductCardActions from '@/components/product-card-actions'
+import {SITE_KEY} from '@/lib/site'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -24,8 +25,8 @@ export default async function ShopPage({searchParams}:{searchParams:Promise<Para
  const collectionHref=isNewArrivals?'/shop?new=true':'/shop'
  const isRecent=(p:Product)=>{const added=Date.parse(p.created_at);return Number.isFinite(added)&&added>=newSince&&added<=now}
  const [{data:productsData},{data:categoriesData},{data:variantsData}]=await Promise.all([
-  supabase.from('products').select('id,name,slug,description,price,image_url,featured,stock_quantity,category_id,default_size_grams,created_at').eq('is_active',true).order('created_at',{ascending:false}),
-  supabase.from('categories').select('id,name,slug').order('name'),
+  supabase.from('products').select('id,name,slug,description,price,image_url,featured,stock_quantity,category_id,default_size_grams,created_at').eq('site_key',SITE_KEY).eq('is_active',true).order('created_at',{ascending:false}),
+  supabase.from('categories').select('id,name,slug').eq('site_key',SITE_KEY).order('name'),
   supabase.from('product_variants').select('id,product_id,size_grams,size_label,price,stock_quantity,is_active').eq('is_active',true).order('size_grams')])
  const products=(productsData??[]) as Product[], categories=(categoriesData??[]) as Category[], variants=(variantsData??[]) as Variant[]
  const selectedCategory=params.category?categories.find(c=>c.slug===params.category):null
