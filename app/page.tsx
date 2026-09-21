@@ -4,6 +4,7 @@ import { createClient, createCatalogueClient } from '@/lib/supabase/server'
 import ProductCardActions from '@/components/product-card-actions'
 import { StorefrontHeader } from '@/components/storefront-ui'
 import FeaturedProductCarousel from '@/components/featured-product-carousel'
+import {SITE_KEY} from '@/lib/site'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -57,9 +58,9 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ c
   }
   const supabase = await createCatalogueClient()
   const [{ data: products }, { data: storefrontContent }, { data: headerCategories }] = await Promise.all([
-    supabase.from('products').select('id,name,slug,description,price,image_url,featured,stock_quantity').eq('is_active', true).order('featured', { ascending: false }).order('created_at', { ascending: false }),
-    supabase.from('storefront_content').select('config').eq('id', true).maybeSingle(),
-    supabase.from('categories').select('name,slug').order('name'),
+    supabase.from('products').select('id,name,slug,description,price,image_url,featured,stock_quantity').eq('site_key', SITE_KEY).eq('is_active', true).order('featured', { ascending: false }).order('created_at', { ascending: false }),
+    supabase.from('site_storefront_content').select('config').eq('site_key', SITE_KEY).maybeSingle(),
+    supabase.from('categories').select('name,slug').eq('site_key', SITE_KEY).order('name'),
   ])
   const storefrontConfig = { ...storefrontFallback, ...((storefrontContent?.config ?? {}) as Partial<typeof storefrontFallback>) }
   const social = { ...storefrontFallback.social, ...((storefrontConfig.social ?? {}) as Partial<typeof storefrontFallback.social>) }
