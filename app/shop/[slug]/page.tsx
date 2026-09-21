@@ -4,6 +4,7 @@ import {createClient} from '@/lib/supabase/server'
 import ProductVariantPicker from '@/components/product-variant-picker'
 import CartLink from '@/components/cart-link'
 import SocialShare from '@/components/social-share'
+import {SITE_KEY} from '@/lib/site'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -11,7 +12,7 @@ export const revalidate = 0
 export default async function ProductPage({params}:{params:Promise<{slug:string}>}){
  const {slug}=await params
  const s=await createClient()
- const {data,error}=await s.rpc('get_public_product_detail',{p_slug:slug})
+ const {data,error}=await s.rpc('get_public_product_detail_for_site',{p_slug:slug,p_site_key:SITE_KEY})
  const detail=data as any
  const p=detail?.product
  const v=Array.isArray(detail?.variants)?detail.variants:[]
