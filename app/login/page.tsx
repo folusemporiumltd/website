@@ -1,7 +1,8 @@
 import Link from 'next/link'
 import { login, signup } from './actions'
+import RegistrationPrefill from '@/components/registration-prefill'
 
-export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string; error?: string; message?: string; mode?: string }> }) {
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string; error?: string; message?: string; mode?: string; prefill?: string }> }) {
   const params = await searchParams
   const next = params.next ?? '/account'
   const isCheckout = next === '/checkout'
@@ -31,6 +32,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
 
           {mode === 'signup' ? (
             <form>
+              <RegistrationPrefill enabled={params.prefill === '1'} />
               <label htmlFor="name">Full name</label>
               <input id="name" name="name" type="text" autoComplete="name" placeholder="Your full name" required />
               <label htmlFor="phone">Phone number</label>
