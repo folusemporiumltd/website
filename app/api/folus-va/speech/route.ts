@@ -18,9 +18,9 @@ export async function POST(request: Request) {
       voice: 'coral',
       input: text.replace(/₦/g, ' naira '),
       instructions: 'Speak as a warm, confident Nigerian woman using natural Nigerian English. Sound friendly, polished and conversational, never robotic. Use a moderate pace, gentle warmth and clear pronunciation. Do not exaggerate the accent.',
-      response_format: 'mp3',
+      response_format: 'wav',
     }),
   })
   if (!response.ok) return NextResponse.json({ error: 'Voice generation is temporarily unavailable.' }, { status: 502 })
-  return new NextResponse(response.body, { headers: { 'Content-Type': 'audio/mpeg', 'Cache-Control': 'private, no-store' } })
+  return new NextResponse(response.body, { headers: { 'Content-Type': 'audio/wav', 'Cache-Control': 'private, no-store' } })
 }
