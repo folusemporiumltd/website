@@ -32,10 +32,14 @@ export default function FolusVA() {
     try {
       const response = await fetch('/api/folus-va/speech', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text }) })
       if (!response.ok) throw new Error('Natural voice unavailable')
-      const url = URL.createObjectURL(await response.blob())
-      const audio = new Audio(url); audioRef.current = audio
-      audio.onended = () => URL.revokeObjectURL(url)
-      await audio.play()
+      if (response.body && 'MediaSource' in window && MediaSource.isTypeSupported('audio/mpeg')) {
+        const mediaSource = new MediaSource(), url = URL.createObjectURL(mediaSource), audio = new Audio(url)
+        audioRef.current = audio; audio.onended = () => URL.revokeObjectURL(url)
+        await new Promise<void>((resolve, reject) => mediaSource.addEventListener('sourceopen', async () => { try { const source = mediaSource.addSourceBuffer('audio/mpeg'), reader = response.body!.getReader(); let started = false; while (true) { const { value, done } = await reader.read(); if (done) break; await new Promise<void>(ready => { source.addEventListener('updateend', () => ready(), { once: true }); source.appendBuffer(value as BufferSource) }); if (!started) { started = true; await audio.play() } } if (mediaSource.readyState === 'open') mediaSource.endOfStream(); resolve() } catch (streamError) { reject(streamError) } }, { once: true }))
+      } else {
+        const url = URL.createObjectURL(await response.blob()), audio = new Audio(url)
+        audioRef.current = audio; audio.onended = () => URL.revokeObjectURL(url); await audio.play()
+      }
     } catch {
       if (!('speechSynthesis' in window)) return
       const utterance = new SpeechSynthesisUtterance(text.replace(/[₦]/g, ' naira '))
