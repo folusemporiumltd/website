@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import SignOutButton from './sign-out-button'
+import {SITE_KEY} from '@/lib/site'
 
 const stages=['pending','processing','shipped','delivered']
 function money(v:number|string|null|undefined){return `₦${Number(v??0).toLocaleString('en-NG')}`}
@@ -28,7 +29,7 @@ export default async function AccountPage({searchParams}:{searchParams?:Promise<
  if(!user)redirect('/login?next=/account&mode=signin')
  const [{data:profile},{data:orders},{data:newsletterSubscribed}]=await Promise.all([
   supabase.from('profiles').select('full_name,phone,role').eq('id',user.id).maybeSingle(),
-  supabase.rpc('get_my_orders'),
+  supabase.rpc('get_my_orders_for_site',{p_site_key:SITE_KEY}),
   supabase.rpc('get_my_newsletter_preference')
  ])
  const m=user.user_metadata??{},fullName=profile?.full_name||m.full_name||'Customer',phone=profile?.phone||m.phone||'Not provided',address=m.delivery_address||'Not provided',location=[m.delivery_city,m.delivery_state].filter(Boolean).join(', ')||'Not provided',isAdmin=profile?.role==='admin'
