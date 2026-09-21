@@ -58,6 +58,7 @@ export async function updateSession(request: NextRequest) {
     pathname === '/contact' ||
     pathname.startsWith('/p/') ||
     pathname.startsWith('/payment/callback') ||
+    pathname === '/api/folus-va' ||
     pathname === '/api/paystack/webhook' ||
     pathname === '/api/assets/folus-email-logo'
 
